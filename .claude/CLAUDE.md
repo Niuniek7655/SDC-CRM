@@ -1,0 +1,86 @@
+# CLAUDE.md
+
+## Project context
+
+This repository contains a CRM system for sales and backoffice operations.
+
+The system should support:
+
+- customer management,
+- lead management,
+- sales pipeline,
+- sales contacts, notes and follow-ups,
+- order creation by salespeople,
+- backoffice order processing,
+- basic reporting and KPI,
+- roles and access control,
+- future integrations with external systems.
+
+## Main business workflow
+
+Use this workflow as the main product context:
+
+```text
+Lead -> Opportunity -> SalesOrder -> BackofficeOrderCase
+```
+
+A salesperson registers and works on a lead.  
+A qualified lead becomes an opportunity in the sales pipeline.  
+A won opportunity can become a sales order.  
+A submitted sales order is processed by backoffice.
+
+## Main users
+
+Use these user roles as business context:
+
+- `Salesperson` — registers leads, manages customer contact, adds notes, plans follow-ups and creates orders.
+- `SalesManager` — monitors the pipeline, sales activity and sales team performance.
+- `BackofficeUser` — processes orders submitted by sales.
+- `BackofficeManager` — manages the backoffice queue, assignments and processing status.
+- `Admin` — manages users, roles and basic configuration.
+
+## Domain language
+
+Use these terms consistently:
+
+- `Customer`
+- `ContactPerson`
+- `Lead`
+- `Opportunity`
+- `SalesActivity`
+- `SalesNote`
+- `FollowUp`
+- `SalesOrder`
+- `BackofficeOrderCase`
+- `OrderStatus`
+
+Avoid introducing alternative names such as `Deal`, `Prospect`, `Ticket`, `Item` or `Record` unless the project documentation explicitly changes the domain language.
+
+## Current project phase
+
+The project is still in an early product-definition phase.
+
+Do not assume detailed technical architecture, framework-specific conventions, persistence strategy, testing framework, API style or frontend framework unless they already exist in the repository or are explicitly requested.
+
+When implementation details are missing:
+
+- prefer simple, conventional solutions,
+- do not introduce unnecessary abstractions,
+- do not add speculative features,
+- leave a clear TODO or question when a business or technical decision is required.
+
+## Important product rule
+
+Prefer user workflows over generic CRUD thinking.
+
+Core workflows should be described in business language, for example:
+
+- register lead,
+- qualify lead,
+- add sales note,
+- schedule follow-up,
+- win opportunity,
+- create sales order,
+- submit order to backoffice,
+- return order to sales,
+- complete order.

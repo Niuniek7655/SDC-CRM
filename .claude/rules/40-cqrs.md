@@ -1,0 +1,49 @@
+---
+paths:
+  - "**/*.cs"
+---
+
+# CQRS Rules
+
+Use CQRS in the application layer.
+
+Commands:
+
+- change state
+- express business intent
+- return minimal results
+- should be handled transactionally
+
+Queries:
+
+- do not change state
+- return read models / DTOs
+- should not expose domain aggregates directly
+
+Command examples:
+
+- `RegisterLeadCommand`
+- `QualifyLeadCommand`
+- `RejectLeadCommand`
+- `CreateOpportunityFromLeadCommand`
+- `WinOpportunityCommand`
+- `CreateSalesOrderFromOpportunityCommand`
+- `SubmitOrderToBackofficeCommand`
+- `ChangeBackofficeOrderStatusCommand`
+- `ReturnOrderToSalesCommand`
+- `CompleteBackofficeOrderCommand`
+
+Query examples:
+
+- `GetMyLeadsQuery`
+- `GetLeadDetailsQuery`
+- `GetOpportunityPipelineQuery`
+- `GetSalesOrderStatusQuery`
+- `GetBackofficeQueueQuery`
+- `GetBackofficeOrderDetailsQuery`
+
+Do not mix command and query responsibilities in one handler.
+
+Do not return EF entities or domain aggregates from queries.
+
+Use read models optimized for UI and reporting when appropriate.

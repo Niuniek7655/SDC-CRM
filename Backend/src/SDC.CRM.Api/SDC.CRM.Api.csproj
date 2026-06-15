@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!-- Presentation layer: HTTP API. Composition root; depends on Application + Infrastructure. -->
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SDC.CRM.Application\SDC.CRM.Application.csproj" />
+    <ProjectReference Include="..\SDC.CRM.Infrastructure\SDC.CRM.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

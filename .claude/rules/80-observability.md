@@ -1,0 +1,46 @@
+---
+paths:
+  - "**/*.cs"
+  - "**/*.json"
+  - "**/*.yml"
+  - "**/*.yaml"
+---
+
+# Observability Rules
+
+The backend should use a ready-to-use observability stack for:
+
+- structured logs,
+- distributed tracing,
+- metrics,
+- correlation IDs.
+
+Prefer OpenTelemetry-compatible instrumentation where possible.
+
+Every request and background message should be traceable through:
+
+- correlation ID,
+- causation ID where applicable,
+- user ID when available and safe,
+- module name,
+- use-case name,
+- aggregate ID when relevant.
+
+Logging rules:
+
+- log business operation boundaries,
+- log important state transitions,
+- log integration failures,
+- do not log secrets,
+- do not log sensitive customer data unnecessarily,
+- prefer structured properties over string concatenation.
+
+Useful local stack candidates:
+
+- OpenTelemetry Collector,
+- Seq or Grafana Loki for logs,
+- Prometheus for metrics,
+- Grafana for dashboards,
+- Jaeger or Tempo for traces.
+
+Do not bind domain logic to any logging or tracing library.

@@ -1,0 +1,15 @@
+.lead-register {
+  max-width: 560px;
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.error-text {
+  color: var(--color-danger);
+  margin-top: 0;
+  margin-bottom: 16px;
+}

@@ -1,0 +1,49 @@
+<section class="lead-list">
+  <div class="lead-list__header">
+    <h1>Moje leady</h1>
+    <a class="btn" routerLink="/leads/new">+ Nowy lead</a>
+  </div>
+
+  @if (loading()) {
+    <p class="muted">Wczytywanie…</p>
+  } @else if (error()) {
+    <div class="card">
+      <p class="error-text">{{ error() }}</p>
+      <button class="btn btn--secondary" (click)="load()">Spróbuj ponownie</button>
+    </div>
+  } @else if (leads().length === 0) {
+    <div class="card">
+      <p class="muted">Nie masz jeszcze żadnych leadów.</p>
+      <a class="btn" routerLink="/leads/new">Zarejestruj pierwszego leada</a>
+    </div>
+  } @else {
+    <div class="card">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Firma</th>
+            <th>Osoba kontaktowa</th>
+            <th>E-mail</th>
+            <th>Status</th>
+            <th>Utworzono</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (lead of leads(); track lead.id) {
+            <tr>
+              <td>{{ lead.companyName }}</td>
+              <td>{{ lead.contactName }}</td>
+              <td>{{ lead.contactEmail }}</td>
+              <td>
+                <span class="badge" [class]="'badge--' + lead.status.toLowerCase()">
+                  {{ lead.status }}
+                </span>
+              </td>
+              <td>{{ lead.createdAtUtc | date: 'short' }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</section>

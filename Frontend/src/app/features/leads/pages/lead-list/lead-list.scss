@@ -1,0 +1,59 @@
+.lead-list__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th,
+.table td {
+  text-align: left;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.table th {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--color-muted);
+}
+
+.table tr:last-child td {
+  border-bottom: none;
+}
+
+.badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  background: #eef1f7;
+  color: var(--color-muted);
+}
+
+.badge--new {
+  background: rgba(47, 109, 246, 0.12);
+  color: var(--color-primary-dark);
+}
+
+.badge--qualified {
+  background: rgba(31, 157, 87, 0.14);
+  color: var(--color-success);
+}
+
+.badge--rejected {
+  background: rgba(210, 59, 59, 0.12);
+  color: var(--color-danger);
+}
+
+.error-text {
+  color: var(--color-danger);
+  margin-top: 0;
+}

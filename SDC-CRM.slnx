@@ -14,6 +14,7 @@
     <File Path=".claude/rules/80-observability.md" />
     <File Path=".claude/rules/90-docker.md" />
     <File Path=".claude/rules/99-tdd-tunit-nsubstitute.md" />
+    <File Path=".claude/rules/15-mobile-dotnet-maui.md" />
   </Folder>
   <Folder Name="/.cursor/" />
   <Folder Name="/.cursor/rules/">
@@ -28,6 +29,7 @@
     <File Path=".cursor/rules/80-observability.mdc" />
     <File Path=".cursor/rules/90-docker.mdc" />
     <File Path=".cursor/rules/99-tdd-tunit-nsubstitute.mdc" />
+    <File Path=".cursor/rules/15-mobile-dotnet-maui.mdc" />
     <File Path=".cursor/rules/project-context.mdc" />
   </Folder>
   <Folder Name="/.github/">
@@ -36,6 +38,7 @@
   <Folder Name="/.github/instructions/">
     <File Path=".github/instructions/00-backend-stack.instructions.md" />
     <File Path=".github/instructions/10-clean-architecture-modular-monolith.instructions.md" />
+    <File Path=".github/instructions/15-mobile-dotnet-maui.instructions.md" />
     <File Path=".github/instructions/20-vertical-slices.instructions.md" />
     <File Path=".github/instructions/30-ddd-aggregates.instructions.md" />
     <File Path=".github/instructions/40-cqrs.instructions.md" />
@@ -71,12 +74,67 @@
     <File Path="doc/CRM.md" />
     <File Path="doc/README.md" />
   </Folder>
-  <Folder Name="/Frontend/">
-    <File Path="frontend/README.md" />
-    <File Path="frontend/package.json" />
-    <File Path="frontend/angular.json" />
-    <File Path="frontend/proxy.conf.json" />
+  <Folder Name="/Frontend/" />
+  <Folder Name="/Frontend/Web/">
+    <File Path="frontend/Web/.editorconfig" />
+    <File Path="frontend/Web/README.md" />
+    <File Path="frontend/Web/angular.json" />
+    <File Path="frontend/Web/package.json" />
+    <File Path="frontend/Web/proxy.conf.json" />
+    <File Path="frontend/Web/tsconfig.app.json" />
+    <File Path="frontend/Web/tsconfig.json" />
+    <File Path="frontend/Web/tsconfig.spec.json" />
   </Folder>
+  <Folder Name="/Frontend/Web/public/">
+    <File Path="frontend/Web/public/.gitkeep" />
+  </Folder>
+  <Folder Name="/Frontend/Web/src/">
+    <File Path="frontend/Web/src/index.html" />
+    <File Path="frontend/Web/src/main.ts" />
+    <File Path="frontend/Web/src/styles.scss" />
+  </Folder>
+  <Folder Name="/Frontend/Web/src/app/">
+    <File Path="frontend/Web/src/app/app.config.ts" />
+    <File Path="frontend/Web/src/app/app.routes.ts" />
+    <File Path="frontend/Web/src/app/app.ts" />
+  </Folder>
+  <Folder Name="/Frontend/Web/src/app/core/" />
+  <Folder Name="/Frontend/Web/src/app/core/interceptors/">
+    <File Path="frontend/Web/src/app/core/interceptors/error-interceptor.ts" />
+  </Folder>
+  <Folder Name="/Frontend/Web/src/app/core/models/">
+    <File Path="frontend/Web/src/app/core/models/lead.model.ts" />
+  </Folder>
+  <Folder Name="/Frontend/Web/src/app/features/" />
+  <Folder Name="/Frontend/Web/src/app/features/leads/">
+    <File Path="frontend/Web/src/app/features/leads/leads.routes.ts" />
+  </Folder>
+  <Folder Name="/Frontend/Web/src/app/features/leads/data/">
+    <File Path="frontend/Web/src/app/features/leads/data/lead.service.ts" />
+  </Folder>
+  <Folder Name="/Frontend/Web/src/app/features/leads/pages/" />
+  <Folder Name="/Frontend/Web/src/app/features/leads/pages/lead-list/">
+    <File Path="frontend/Web/src/app/features/leads/pages/lead-list/lead-list.html" />
+    <File Path="frontend/Web/src/app/features/leads/pages/lead-list/lead-list.scss" />
+    <File Path="frontend/Web/src/app/features/leads/pages/lead-list/lead-list.ts" />
+  </Folder>
+  <Folder Name="/Frontend/Web/src/app/features/leads/pages/lead-register/">
+    <File Path="frontend/Web/src/app/features/leads/pages/lead-register/lead-register.html" />
+    <File Path="frontend/Web/src/app/features/leads/pages/lead-register/lead-register.scss" />
+    <File Path="frontend/Web/src/app/features/leads/pages/lead-register/lead-register.ts" />
+  </Folder>
+  <Folder Name="/Frontend/Web/src/app/layout/" />
+  <Folder Name="/Frontend/Web/src/app/layout/shell/">
+    <File Path="frontend/Web/src/app/layout/shell/shell.html" />
+    <File Path="frontend/Web/src/app/layout/shell/shell.scss" />
+    <File Path="frontend/Web/src/app/layout/shell/shell.ts" />
+  </Folder>
+  <Folder Name="/Frontend/Web/src/environments/">
+    <File Path="frontend/Web/src/environments/environment.development.ts" />
+    <File Path="frontend/Web/src/environments/environment.production.ts" />
+    <File Path="frontend/Web/src/environments/environment.ts" />
+  </Folder>
+  <Folder Name="/Frontend/Mobile/" />
   <Folder Name="/Integrations/" />
 </Solution>
 

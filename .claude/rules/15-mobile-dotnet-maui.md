@@ -1,0 +1,346 @@
+---
+paths:
+  - "frontend/Mobile/**"
+  - "Frontend/Mobile/**"
+---
+
+# Mobile .NET MAUI Instructions
+
+These instructions apply to the dedicated CRM mobile application located under `frontend/Mobile/**`.
+
+The mobile application is a separate client from `frontend/Web`. Do not reuse Angular/web architecture in the MAUI app. Do not build the mobile app as a WebView wrapper around the web frontend unless the user explicitly changes the product direction.
+
+## Product scope
+
+Use the shared CRM domain language:
+
+- `Customer`
+- `ContactPerson`
+- `Lead`
+- `Opportunity`
+- `SalesActivity`
+- `SalesNote`
+- `FollowUp`
+- `SalesOrder`
+- `BackofficeOrderCase`
+- `OrderStatus`
+
+The mobile app should optimize for fast, focused CRM tasks, especially:
+
+- viewing assigned leads,
+- registering a minimal lead,
+- opening lead details,
+- adding a sales note,
+- scheduling a follow-up,
+- checking opportunity/order status,
+- receiving and showing backend validation errors.
+
+Do not assume that all desktop/web screens must be ported to mobile. Prefer mobile-appropriate workflows and smaller vertical slices.
+
+## Recommended folder structure
+
+Use this structure unless an existing mobile structure already exists:
+
+```text
+frontend/Mobile
+  /src
+    /SDC.CRM.Mobile
+      /Presentation
+        /Views
+        /ViewModels
+        /Navigation
+        /Controls
+        /Converters
+      /Application
+        /UseCases
+        /Interfaces
+        /DTOs
+        /Validation
+      /Domain
+        /Models
+        /ValueObjects
+      /Infrastructure
+        /Api
+        /Auth
+        /Storage
+        /Connectivity
+        /Logging
+      /Resources
+      /Platforms
+        /Android
+        /iOS
+        /MacCatalyst
+        /Windows
+  /tests
+    /SDC.CRM.Mobile.Tests
+```
+
+Keep feature-specific files grouped when the feature grows, for example:
+
+```text
+/Presentation/Features/Leads
+  /Views
+  /ViewModels
+/Application/Features/Leads
+/Infrastructure/Api/Leads
+```
+
+## Architecture
+
+Use MVVM as the default UI pattern.
+
+Responsibilities:
+
+- `View` / `Page` / XAML: layout, visual state, bindings, animations and view-only behavior.
+- `ViewModel`: presentation state, commands, loading flags, validation messages and orchestration of use cases.
+- `Application`: use cases and application-level workflows.
+- `Infrastructure`: HTTP clients, token storage, secure storage, local database/cache, platform adapters and connectivity.
+- `Domain`: shared mobile-side domain models or value objects needed by the client. Keep server-owned business rules on the backend.
+
+Do not put HTTP calls, persistence logic, token handling or domain rules directly in `.xaml.cs` code-behind files.
+
+## MVVM rules
+
+Use `CommunityToolkit.Mvvm` for observable state and commands unless the repository already standardizes on a different MVVM library.
+
+Prefer:
+
+- `ObservableObject`
+- `[ObservableProperty]`
+- `[RelayCommand]`
+- `IAsyncRelayCommand`
+
+Use async commands for I/O work. Guard commands with `IsBusy` or command `CanExecute` logic to avoid duplicate submissions.
+
+Example intent:
+
+```csharp
+[RelayCommand]
+private async Task LoadLeadsAsync(CancellationToken cancellationToken)
+{
+    if (IsBusy)
+        return;
+
+    try
+    {
+        IsBusy = true;
+        var leads = await _getMyLeadsUseCase.ExecuteAsync(cancellationToken);
+        Leads = new ObservableCollection<LeadListItemViewModel>(leads);
+    }
+    finally
+    {
+        IsBusy = false;
+    }
+}
+```
+
+Do not use `async void` except for UI event handlers that cannot return `Task`.
+
+## Dependency injection
+
+Register pages, ViewModels, application services, API clients, storage services and platform adapters in `MauiProgram.cs`.
+
+Use interfaces for dependencies injected into ViewModels:
+
+```csharp
+builder.Services.AddTransient<MyLeadsPage>();
+builder.Services.AddTransient<MyLeadsViewModel>();
+
+builder.Services.AddScoped<IGetMyLeadsUseCase, GetMyLeadsUseCase>();
+builder.Services.AddHttpClient<ICrmApiClient, CrmApiClient>();
+builder.Services.AddSingleton<ITokenStorage, SecureTokenStorage>();
+```
+
+ViewModels should not manually instantiate `HttpClient`, storage classes, repositories or platform services.
+
+## Navigation
+
+Use Shell navigation or the repository's chosen navigation approach consistently.
+
+For larger features, wrap navigation behind an interface:
+
+```csharp
+public interface INavigationService
+{
+    Task GoToAsync(string route, IDictionary<string, object>? parameters = null);
+    Task GoBackAsync();
+}
+```
+
+Do not scatter raw route strings across many ViewModels. Keep route names centralized.
+
+## API integration
+
+Do not call backend APIs directly from pages or ViewModels. Use typed API clients or infrastructure services.
+
+Rules:
+
+- Use backend request/response DTOs, not EF Core entities.
+- Handle HTTP status codes explicitly.
+- Map backend validation errors to mobile form errors.
+- Use cancellation tokens for long-running requests.
+- Keep API base URL, environment and feature flags in configuration, not hardcoded in ViewModels.
+- Use a delegating handler for bearer token attachment and token refresh behavior.
+
+Do not log access tokens, refresh tokens, customer data, contact data or full HTTP payloads containing sensitive CRM information.
+
+## Authentication and local storage
+
+Store sensitive values only in secure storage abstractions.
+
+Use:
+
+- `SecureStorage` for access tokens, refresh tokens and secrets.
+- `Preferences` for non-sensitive user preferences, such as selected theme or last selected environment.
+- SQLite or another explicit local database/cache for larger offline data.
+
+Do not store tokens in plain text files, normal preferences or static fields.
+
+Use an abstraction such as:
+
+```csharp
+public interface ITokenStorage
+{
+    Task SaveAsync(TokenSet tokens);
+    Task<TokenSet?> GetAsync();
+    Task ClearAsync();
+}
+```
+
+## Offline and connectivity
+
+Design mobile features to tolerate intermittent connectivity.
+
+Minimum expectations:
+
+- Detect lack of network before operations that require backend access.
+- Show user-friendly offline messages.
+- Keep loaded read-only data visible where safe.
+- Avoid losing unsent form input after validation or connection failure.
+- For future offline write support, use an explicit outbox/sync mechanism rather than ad hoc retries hidden in ViewModels.
+
+Do not silently discard failed submissions.
+
+## UI and UX
+
+Build mobile UI around short tasks and small screens.
+
+Rules:
+
+- Prefer simple pages with clear primary actions.
+- Avoid desktop-sized tables and dense grids.
+- Use `CollectionView` for lists.
+- Use pull-to-refresh or explicit refresh for lists when appropriate.
+- Show loading, empty, error and success states.
+- Preserve user input after validation failure.
+- Display backend validation errors next to relevant fields where possible.
+- Avoid deep nesting of layouts that hurts performance.
+- Avoid heavy work on the UI thread.
+
+Use code-behind only for view-specific behavior that cannot be expressed cleanly with bindings or behaviors.
+
+## Performance
+
+Mobile performance is part of correctness.
+
+Rules:
+
+- Use `async`/`await` for I/O.
+- Never block with `.Result`, `.Wait()` or synchronous HTTP calls.
+- Avoid loading large images at full resolution.
+- Avoid unbounded in-memory collections.
+- Unsubscribe from events when the subscriber lifetime is shorter than the publisher lifetime.
+- Profile or test on a physical device for performance-sensitive changes.
+- Validate release builds when diagnosing performance issues.
+
+## Platform-specific code
+
+Keep platform-specific behavior behind interfaces and place implementations under `Platforms/*` or clearly named infrastructure adapters.
+
+Examples:
+
+- camera access,
+- geolocation,
+- push notifications,
+- biometric authentication,
+- file picker,
+- platform-specific permissions.
+
+Do not put `#if ANDROID` / `#if IOS` blocks inside ViewModels unless there is no reasonable alternative.
+
+## Permissions
+
+Request platform permissions only when the feature needs them.
+
+Rules:
+
+- Ask at the moment of need, not at app startup unless required.
+- Handle denied permissions gracefully.
+- Do not assume Android and iOS permission behavior is identical.
+- Keep permission rationale user-facing and business-oriented.
+
+## Lifecycle
+
+Assume the app can be suspended, resumed or killed at any time.
+
+Rules:
+
+- Do not keep critical unsaved state only in memory.
+- Save draft form state when the workflow requires it.
+- Refresh sensitive data after resume when appropriate.
+- Clear sensitive state on logout.
+- Handle expired tokens after app resume.
+
+## Testing
+
+Prioritize tests for:
+
+- ViewModels,
+- application use cases,
+- API client behavior with mocked HTTP,
+- token storage abstractions,
+- validation mapping,
+- navigation decisions,
+- offline/connectivity behavior.
+
+Avoid putting important behavior only in pages because it is difficult to unit test.
+
+Prefer test names that describe behavior:
+
+```text
+LoadLeads_ShouldShowOfflineMessage_WhenNetworkIsUnavailable
+RegisterLead_ShouldPreserveInput_WhenBackendValidationFails
+SubmitOrder_ShouldNotExecuteTwice_WhenAlreadyBusy
+Logout_ShouldClearStoredTokens
+```
+
+## Build and validation
+
+Before considering a mobile change complete, run the relevant commands from `frontend/Mobile` or the repository root:
+
+```bash
+dotnet workload restore
+dotnet restore
+dotnet build
+dotnet test
+```
+
+If platform-specific validation is required, build the configured target framework, for example Android or iOS, using the target framework already defined in the `.csproj`.
+
+If workloads or SDKs are missing, report the exact command and failure. Do not claim the mobile app builds unless the command actually succeeded.
+
+## Do not
+
+Do not:
+
+- mix Angular/web patterns into the MAUI mobile app,
+- implement the mobile app as generic CRUD screens only,
+- put backend-owned business rules only in mobile code,
+- bypass backend authorization because the mobile UI hides actions,
+- store secrets or tokens outside secure storage,
+- log sensitive CRM data,
+- block the UI thread,
+- make ViewModels depend directly on MAUI controls,
+- add platform-specific code directly to ViewModels,
+- introduce speculative offline sync complexity before it is required.
+

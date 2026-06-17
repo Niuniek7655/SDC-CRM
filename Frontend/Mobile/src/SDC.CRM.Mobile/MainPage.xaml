@@ -1,0 +1,58 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:viewmodels="clr-namespace:SDC.CRM.Mobile.Presentation.ViewModels"
+             x:Class="SDC.CRM.Mobile.MainPage"
+             x:DataType="viewmodels:MainPageViewModel"
+             Title="{Binding Title}">
+
+    <RefreshView IsRefreshing="{Binding IsBusy}"
+                 Command="{Binding RefreshCommand}">
+        <ScrollView>
+            <VerticalStackLayout
+                Padding="30,0"
+                Spacing="25"
+                VerticalOptions="Center">
+                
+                <Image
+                    Source="dotnet_bot.png"
+                    HeightRequest="185"
+                    Aspect="AspectFit"
+                    SemanticProperties.Description="SDC CRM Mobile logo" />
+
+                <Label
+                    Text="{Binding WelcomeMessage}"
+                    Style="{StaticResource Headline}"
+                    HorizontalTextAlignment="Center"
+                    SemanticProperties.HeadingLevel="Level1" />
+
+                <HorizontalStackLayout 
+                    HorizontalOptions="Center"
+                    Spacing="10">
+                    <Label 
+                        Text="Status połączenia:" 
+                        VerticalOptions="Center" />
+                    <Label 
+                        Text="{Binding IsOnline, Converter={StaticResource BoolToOnlineStatusConverter}}"
+                        TextColor="{Binding IsOnline, Converter={StaticResource BoolToOnlineColorConverter}}"
+                        FontAttributes="Bold"
+                        VerticalOptions="Center" />
+                </HorizontalStackLayout>
+
+                <Label
+                    Text="{Binding ErrorMessage}"
+                    TextColor="Red"
+                    HorizontalTextAlignment="Center"
+                    IsVisible="{Binding HasError}" />
+
+                <Button
+                    Text="Odśwież"
+                    Command="{Binding RefreshCommand}"
+                    HorizontalOptions="Fill"
+                    IsEnabled="{Binding IsNotBusy}" />
+
+            </VerticalStackLayout>
+        </ScrollView>
+    </RefreshView>
+
+</ContentPage>

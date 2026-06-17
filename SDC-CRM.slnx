@@ -134,7 +134,12 @@
     <File Path="frontend/Web/src/environments/environment.production.ts" />
     <File Path="frontend/Web/src/environments/environment.ts" />
   </Folder>
-  <Folder Name="/Frontend/Mobile/" />
+  <Folder Name="/Frontend/Mobile/">
+    <File Path="Frontend/Mobile/README.md" />
+  </Folder>
+  <Folder Name="/Frontend/Mobile/src/">
+    <Project Path="Frontend/Mobile/src/SDC.CRM.Mobile/SDC.CRM.Mobile.csproj" />
+  </Folder>
   <Folder Name="/Integrations/" />
 </Solution>
 

@@ -158,6 +158,39 @@ project.assets.json
 .config/dotnet-tools.json
 
 # ===================
+# .NET MAUI / Mobile
+# ===================
+# MAUI specific outputs
+*.ipa
+*.apk
+*.aab
+*.msix
+*.msixbundle
+*.appxbundle
+*.appx
+
+# Android specific
+*.keystore
+!**/debug.keystore
+*.jks
+local.properties
+
+# iOS specific
+*.mobileprovision
+*.provisionprofile
+*.xcuserstate
+*.xcscmblueprint
+
+# Xamarin/MAUI workload files
+stamps/
+
+# Visual Studio for Mac
+.vs/mac/
+
+# Hot Reload
+*.hr
+
+# ===================
 # Node.js / Frontend
 # ===================
 node_modules/
@@ -189,6 +222,24 @@ out/
 
 # Vite
 .vite/
+
+# ===================
+# Angular
+# ===================
+# Angular CLI cache
+.angular/
+
+# Test coverage
+coverage/
+
+# SCSS/SASS cache
+.sass-cache/
+
+# Compodoc documentation
+documentation/
+
+# Angular Universal server output
+dist-server/
 
 # ===================
 # VS Code
@@ -236,3 +287,31 @@ $RECYCLE.BIN/
 .temp/
 .tmp/
 
+# ===================
+# Docker
+# ===================
+# Local docker data volumes (if mounted locally)
+.docker-data/
+docker-data/
+
+# Docker override files (local development customizations)
+docker-compose.override.yml
+docker-compose.local.yml
+
+# ===================
+# Crash reports and dumps
+# ===================
+*.dmp
+*.stackdump
+crash.log
+crashlog*.txt
+hs_err_pid*
+
+# ===================
+# Secrets (never commit)
+# ===================
+*.pfx
+*.p12
+secrets.json
+appsettings.*.local.json
+appsettings.local.json

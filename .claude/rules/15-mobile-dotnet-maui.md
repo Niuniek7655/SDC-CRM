@@ -1,14 +1,13 @@
 ---
 paths:
-  - "frontend/Mobile/**"
   - "Frontend/Mobile/**"
 ---
 
 # Mobile .NET MAUI Instructions
 
-These instructions apply to the dedicated CRM mobile application located under `frontend/Mobile/**`.
+These instructions apply to the dedicated CRM mobile application located under `Frontend/Mobile/**`.
 
-The mobile application is a separate client from `frontend/Web`. Do not reuse Angular/web architecture in the MAUI app. Do not build the mobile app as a WebView wrapper around the web frontend unless the user explicitly changes the product direction.
+The mobile application is a separate client from `Frontend/Web`. Do not reuse Angular/web architecture in the MAUI app. Do not build the mobile app as a WebView wrapper around the web frontend unless the user explicitly changes the product direction.
 
 ## Product scope
 
@@ -42,7 +41,7 @@ Do not assume that all desktop/web screens must be ported to mobile. Prefer mobi
 Use this structure unless an existing mobile structure already exists:
 
 ```text
-frontend/Mobile
+Frontend/Mobile
   /src
     /SDC.CRM.Mobile
       /Presentation
@@ -293,7 +292,9 @@ Rules:
 
 ## Testing
 
-Prioritize tests for:
+For testing rules, naming conventions and TDD workflow, see `.claude/rules/99-tdd-tunit-nsubstitute.md`.
+
+Mobile-specific testing priorities:
 
 - ViewModels,
 - application use cases,
@@ -305,18 +306,10 @@ Prioritize tests for:
 
 Avoid putting important behavior only in pages because it is difficult to unit test.
 
-Prefer test names that describe behavior:
-
-```text
-LoadLeads_ShouldShowOfflineMessage_WhenNetworkIsUnavailable
-RegisterLead_ShouldPreserveInput_WhenBackendValidationFails
-SubmitOrder_ShouldNotExecuteTwice_WhenAlreadyBusy
-Logout_ShouldClearStoredTokens
-```
 
 ## Build and validation
 
-Before considering a mobile change complete, run the relevant commands from `frontend/Mobile` or the repository root:
+Before considering a mobile change complete, run the relevant commands from `Frontend/Mobile` or the repository root:
 
 ```bash
 dotnet workload restore

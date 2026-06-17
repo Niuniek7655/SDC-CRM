@@ -1,0 +1,60 @@
+---
+description: "Use when creating or modifying application use cases or feature slices"
+globs:
+  - "**/*.cs"
+alwaysApply: false
+---
+
+# Vertical Slice Rules
+
+Organize application logic by use case / feature, not by generic technical folders only.
+
+Prefer this shape inside a module:
+
+```text
+Modules/
+  Sales/
+    Leads/
+      RegisterLead/
+        RegisterLeadCommand.cs
+        RegisterLeadHandler.cs
+        RegisterLeadValidator.cs
+        RegisterLeadEndpoint.cs
+        RegisterLeadTests.cs
+      QualifyLead/
+        QualifyLeadCommand.cs
+        QualifyLeadHandler.cs
+        QualifyLeadEndpoint.cs
+        QualifyLeadTests.cs
+```
+
+A vertical slice should contain everything needed for one business use case:
+
+- command or query
+- handler
+- request/response contract
+- endpoint
+- validation
+- authorization check
+- domain interaction
+- tests
+
+Do not create generic service classes such as:
+
+- `LeadService`
+- `OrderService`
+- `BackofficeService`
+
+unless they represent a clear domain service or infrastructure adapter.
+
+Prefer business operation names:
+
+- `RegisterLead`
+- `QualifyLead`
+- `WinOpportunity`
+- `CreateSalesOrder`
+- `SubmitOrderToBackoffice`
+- `ReturnOrderToSales`
+- `CompleteBackofficeOrder`
+
+Each slice should be small, independently testable and understandable.

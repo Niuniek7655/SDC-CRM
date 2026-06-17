@@ -1,0 +1,32 @@
+---
+paths:
+  - "**/Dockerfile*"
+  - "**/docker-compose*.yml"
+  - "**/docker-compose*.yaml"
+---
+
+# Docker and Local Environment Rules
+
+The backend should be containerized with Docker.
+
+Expected local infrastructure:
+
+- application container,
+- PostgreSQL container,
+- observability stack containers,
+- optional broker container in the future,
+- initially no RabbitMQ requirement if in-memory broker is used.
+
+Rules:
+
+- keep Docker configuration reproducible,
+- prefer environment variables for runtime configuration,
+- never store secrets in Dockerfiles or committed compose files,
+- provide health checks for infrastructure services where useful,
+- keep development and production concerns separated.
+
+When RabbitMQ is introduced later:
+
+- add it through infrastructure configuration,
+- keep application code dependent on messaging abstractions,
+- do not rewrite domain/application logic to support RabbitMQ.

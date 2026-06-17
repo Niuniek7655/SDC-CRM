@@ -4,6 +4,32 @@
 
 This repository contains a CRM system for sales and backoffice operations.
 
+The repository is organized as a multi-application product:
+
+- `Backend/**` — .NET backend for CRM domain, API, application logic, persistence and integrations.
+- `Frontend/Web/**` — dedicated web frontend application.
+- `Frontend/Mobile/**` — dedicated mobile frontend application, planned as a .NET MAUI app.
+- `doc/**` — product, domain and architecture documentation.
+- `integrations/**` — integration-related code and documentation when introduced.
+
+The mobile app is not a wrapper around the web app. Treat `frontend/Web` and `frontend/Mobile` as separate clients that consume backend APIs and share CRM domain language, not UI implementation.
+
+## Instruction scope by repository location
+
+Use specialized rules according to the path being changed:
+
+| Location | Application area | Claude rules |
+|---|---|---|
+| `Backend/**` | Backend .NET modular monolith | all `.claude/rules/*.md` files (backend stack, clean architecture, vertical slices, DDD, CQRS, persistence, messaging, observability, Docker and testing) |
+| `Frontend/Web/**` | Dedicated web frontend | general frontend guidance from this file and future web-specific rules |
+| `Frontend/Mobile/**` | Dedicated .NET MAUI mobile app | `.claude/rules/15-mobile-dotnet-maui.md` |
+| `doc/**` | Documentation | product/domain documentation guidance |
+| `.github/**`, `.cursor/**`, `.claude/**` | AI tooling configuration | keep rules concise, path-scoped and non-conflicting |
+
+When changing files under `Frontend/Mobile/**`, prioritize the mobile-specific .NET MAUI rules over generic frontend guidance. When changing files under `Frontend/Web/**`, do not apply MAUI/XAML/MVVM-specific rules unless explicitly requested.
+
+## System capabilities
+
 The system should support:
 
 - customer management,
@@ -41,7 +67,7 @@ Use these user roles as business context:
 
 ## Domain language
 
-Use these terms consistently:
+Use these terms consistently in backend, web frontend, mobile frontend, tests, API contracts and documentation:
 
 - `Customer`
 - `ContactPerson`
@@ -61,6 +87,16 @@ Avoid introducing alternative names such as `Deal`, `Prospect`, `Ticket`, `Item`
 The project is still in an early product-definition phase.
 
 Do not assume detailed technical architecture, framework-specific conventions, persistence strategy, testing framework, API style or frontend framework unless they already exist in the repository or are explicitly requested.
+
+The current known application locations are:
+
+```text
+Backend/**
+Frontend/Web/**
+Frontend/Mobile/**
+doc/**
+integrations/**
+```
 
 When implementation details are missing:
 
@@ -84,3 +120,5 @@ Core workflows should be described in business language, for example:
 - submit order to backoffice,
 - return order to sales,
 - complete order.
+
+Mobile workflows should be smaller, focused and optimized for quick field usage. Do not assume every web screen must exist on mobile.

@@ -1,0 +1,50 @@
+<section class="lead-register">
+  <h1>Nowy lead</h1>
+
+  <form class="card" [formGroup]="form" (ngSubmit)="submit()">
+    @if (serverError(); as message) {
+      <p class="error-text">{{ message }}</p>
+    }
+
+    <div class="field">
+      <label for="companyName">Nazwa firmy *</label>
+      <input id="companyName" type="text" formControlName="companyName" />
+      @if (form.controls.companyName.touched && form.controls.companyName.invalid) {
+        <span class="error">Nazwa firmy jest wymagana.</span>
+      }
+    </div>
+
+    <div class="field">
+      <label for="contactName">Osoba kontaktowa *</label>
+      <input id="contactName" type="text" formControlName="contactName" />
+      @if (form.controls.contactName.touched && form.controls.contactName.invalid) {
+        <span class="error">Osoba kontaktowa jest wymagana.</span>
+      }
+    </div>
+
+    <div class="field">
+      <label for="contactEmail">E-mail *</label>
+      <input id="contactEmail" type="email" formControlName="contactEmail" />
+      @if (form.controls.contactEmail.touched && form.controls.contactEmail.invalid) {
+        <span class="error">Podaj poprawny adres e-mail.</span>
+      }
+    </div>
+
+    <div class="field">
+      <label for="contactPhone">Telefon</label>
+      <input id="contactPhone" type="tel" formControlName="contactPhone" />
+    </div>
+
+    <div class="field">
+      <label for="source">Źródło</label>
+      <input id="source" type="text" formControlName="source" placeholder="np. Targi, Polecenie" />
+    </div>
+
+    <div class="actions">
+      <button class="btn" type="submit" [disabled]="submitting()">
+        {{ submitting() ? 'Zapisywanie…' : 'Zapisz leada' }}
+      </button>
+      <a class="btn btn--secondary" routerLink="/leads">Anuluj</a>
+    </div>
+  </form>
+</section>

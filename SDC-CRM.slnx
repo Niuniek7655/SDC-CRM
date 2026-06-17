@@ -2,14 +2,71 @@
   <Folder Name="/.claude/">
     <File Path=".claude/CLAUDE.md" />
   </Folder>
+  <Folder Name="/.claude/rules/">
+    <File Path=".claude/rules/00-backend-stack.md" />
+    <File Path=".claude/rules/10-clean-architecture-modular-monolith.md" />
+    <File Path=".claude/rules/20-vertical-slices.md" />
+    <File Path=".claude/rules/30-ddd-aggregates.md" />
+    <File Path=".claude/rules/40-cqrs.md" />
+    <File Path=".claude/rules/50-event-driven-messaging.md" />
+    <File Path=".claude/rules/60-postgres-persistence.md" />
+    <File Path=".claude/rules/70-event-sourcing.md" />
+    <File Path=".claude/rules/80-observability.md" />
+    <File Path=".claude/rules/90-docker.md" />
+    <File Path=".claude/rules/99-tdd-tunit-nsubstitute.md" />
+    <File Path=".claude/rules/15-mobile-dotnet-maui.md" />
+  </Folder>
   <Folder Name="/.cursor/" />
   <Folder Name="/.cursor/rules/">
+    <File Path=".cursor/rules/00-backend-project-context.mdc" />
+    <File Path=".cursor/rules/10-clean-architecture-modular-monolith.mdc" />
+    <File Path=".cursor/rules/20-vertical-slices.mdc" />
+    <File Path=".cursor/rules/30-ddd-aggregates.mdc" />
+    <File Path=".cursor/rules/40-cqrs.mdc" />
+    <File Path=".cursor/rules/50-event-driven-messaging.mdc" />
+    <File Path=".cursor/rules/60-postgres-persistence.mdc" />
+    <File Path=".cursor/rules/70-event-sourcing.mdc" />
+    <File Path=".cursor/rules/80-observability.mdc" />
+    <File Path=".cursor/rules/90-docker.mdc" />
+    <File Path=".cursor/rules/99-tdd-tunit-nsubstitute.mdc" />
+    <File Path=".cursor/rules/15-mobile-dotnet-maui.mdc" />
     <File Path=".cursor/rules/project-context.mdc" />
   </Folder>
   <Folder Name="/.github/">
     <File Path=".github/copilot-instructions.md" />
   </Folder>
-  <Folder Name="/Backend/" />
+  <Folder Name="/.github/instructions/">
+    <File Path=".github/instructions/00-backend-stack.instructions.md" />
+    <File Path=".github/instructions/10-clean-architecture-modular-monolith.instructions.md" />
+    <File Path=".github/instructions/15-mobile-dotnet-maui.instructions.md" />
+    <File Path=".github/instructions/20-vertical-slices.instructions.md" />
+    <File Path=".github/instructions/30-ddd-aggregates.instructions.md" />
+    <File Path=".github/instructions/40-cqrs.instructions.md" />
+    <File Path=".github/instructions/50-event-driven-messaging.instructions.md" />
+    <File Path=".github/instructions/60-postgres-persistence.instructions.md" />
+    <File Path=".github/instructions/70-event-sourcing.instructions.md" />
+    <File Path=".github/instructions/80-observability.instructions.md" />
+    <File Path=".github/instructions/90-docker.instructions.md" />
+    <File Path=".github/instructions/99-tdd-tunit-nsubstitute.instructions.md" />
+  </Folder>
+  <Folder Name="/.github/prompts/">
+    <File Path=".github/prompts/design-ddd-aggregate.prompt.md" />
+    <File Path=".github/prompts/implement-vertical-slice-tdd.prompt.md" />
+  </Folder>
+  <Folder Name="/Backend/">
+    <File Path="backend/Directory.Build.props" />
+    <File Path="backend/README.md" />
+  </Folder>
+  <Folder Name="/Backend/src/">
+    <Project Path="backend/src/SDC.CRM.Domain/SDC.CRM.Domain.csproj" />
+    <Project Path="backend/src/SDC.CRM.Application/SDC.CRM.Application.csproj" />
+    <Project Path="backend/src/SDC.CRM.Infrastructure/SDC.CRM.Infrastructure.csproj" />
+    <Project Path="backend/src/SDC.CRM.Api/SDC.CRM.Api.csproj" />
+  </Folder>
+  <Folder Name="/Backend/tests/">
+    <Project Path="backend/tests/SDC.CRM.Domain.Tests/SDC.CRM.Domain.Tests.csproj" />
+    <Project Path="backend/tests/SDC.CRM.Application.Tests/SDC.CRM.Application.Tests.csproj" />
+  </Folder>
   <Folder Name="/doc/">
     <File Path="doc/01-slownik-jezyka-wszechobecnego.md" />
     <File Path="doc/02-uzytkownicy-role-uprawnienia.md" />
@@ -18,5 +75,71 @@
     <File Path="doc/README.md" />
   </Folder>
   <Folder Name="/Frontend/" />
+  <Folder Name="/Frontend/Web/">
+    <File Path="frontend/Web/.editorconfig" />
+    <File Path="frontend/Web/README.md" />
+    <File Path="frontend/Web/angular.json" />
+    <File Path="frontend/Web/package.json" />
+    <File Path="frontend/Web/proxy.conf.json" />
+    <File Path="frontend/Web/tsconfig.app.json" />
+    <File Path="frontend/Web/tsconfig.json" />
+    <File Path="frontend/Web/tsconfig.spec.json" />
+  </Folder>
+  <Folder Name="/Frontend/Web/public/">
+    <File Path="frontend/Web/public/.gitkeep" />
+  </Folder>
+  <Folder Name="/Frontend/Web/src/">
+    <File Path="frontend/Web/src/index.html" />
+    <File Path="frontend/Web/src/main.ts" />
+    <File Path="frontend/Web/src/styles.scss" />
+  </Folder>
+  <Folder Name="/Frontend/Web/src/app/">
+    <File Path="frontend/Web/src/app/app.config.ts" />
+    <File Path="frontend/Web/src/app/app.routes.ts" />
+    <File Path="frontend/Web/src/app/app.ts" />
+  </Folder>
+  <Folder Name="/Frontend/Web/src/app/core/" />
+  <Folder Name="/Frontend/Web/src/app/core/interceptors/">
+    <File Path="frontend/Web/src/app/core/interceptors/error-interceptor.ts" />
+  </Folder>
+  <Folder Name="/Frontend/Web/src/app/core/models/">
+    <File Path="frontend/Web/src/app/core/models/lead.model.ts" />
+  </Folder>
+  <Folder Name="/Frontend/Web/src/app/features/" />
+  <Folder Name="/Frontend/Web/src/app/features/leads/">
+    <File Path="frontend/Web/src/app/features/leads/leads.routes.ts" />
+  </Folder>
+  <Folder Name="/Frontend/Web/src/app/features/leads/data/">
+    <File Path="frontend/Web/src/app/features/leads/data/lead.service.ts" />
+  </Folder>
+  <Folder Name="/Frontend/Web/src/app/features/leads/pages/" />
+  <Folder Name="/Frontend/Web/src/app/features/leads/pages/lead-list/">
+    <File Path="frontend/Web/src/app/features/leads/pages/lead-list/lead-list.html" />
+    <File Path="frontend/Web/src/app/features/leads/pages/lead-list/lead-list.scss" />
+    <File Path="frontend/Web/src/app/features/leads/pages/lead-list/lead-list.ts" />
+  </Folder>
+  <Folder Name="/Frontend/Web/src/app/features/leads/pages/lead-register/">
+    <File Path="frontend/Web/src/app/features/leads/pages/lead-register/lead-register.html" />
+    <File Path="frontend/Web/src/app/features/leads/pages/lead-register/lead-register.scss" />
+    <File Path="frontend/Web/src/app/features/leads/pages/lead-register/lead-register.ts" />
+  </Folder>
+  <Folder Name="/Frontend/Web/src/app/layout/" />
+  <Folder Name="/Frontend/Web/src/app/layout/shell/">
+    <File Path="frontend/Web/src/app/layout/shell/shell.html" />
+    <File Path="frontend/Web/src/app/layout/shell/shell.scss" />
+    <File Path="frontend/Web/src/app/layout/shell/shell.ts" />
+  </Folder>
+  <Folder Name="/Frontend/Web/src/environments/">
+    <File Path="frontend/Web/src/environments/environment.development.ts" />
+    <File Path="frontend/Web/src/environments/environment.production.ts" />
+    <File Path="frontend/Web/src/environments/environment.ts" />
+  </Folder>
+  <Folder Name="/Frontend/Mobile/">
+    <File Path="Frontend/Mobile/README.md" />
+  </Folder>
+  <Folder Name="/Frontend/Mobile/src/">
+    <Project Path="Frontend/Mobile/src/SDC.CRM.Mobile/SDC.CRM.Mobile.csproj" />
+  </Folder>
+  <Folder Name="/Integrations/" />
 </Solution>
 

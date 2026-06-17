@@ -1,0 +1,39 @@
+---
+paths:
+  - "**/*.cs"
+  - "**/*.sql"
+  - "**/*.json"
+---
+
+# PostgreSQL Persistence Rules
+
+Use PostgreSQL as the primary database.
+
+Persistence rules:
+
+- keep persistence concerns in Infrastructure,
+- do not expose EF Core entities through API contracts,
+- avoid leaking database schema details into domain objects,
+- use repositories only when they add value for aggregates,
+- use query projections/read models for read-heavy screens,
+- use optimistic concurrency for aggregates where concurrent edits may happen.
+
+Aggregate persistence should preserve business invariants.
+
+Do not model relationships only because they are convenient in the database.
+Prefer aggregate references by ID across module boundaries.
+
+Migrations:
+
+- keep migrations deterministic,
+- do not add destructive migrations without explicit business decision,
+- preserve history for important business records.
+
+Avoid physical deletion of records that require audit/history, such as:
+
+- leads,
+- opportunities,
+- sales orders,
+- backoffice cases,
+- audit records,
+- domain/integration event records.

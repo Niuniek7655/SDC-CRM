@@ -1,4 +1,29 @@
 <Solution>
+  <Folder Name="/Integrations/Sso/">
+    <File Path="Integrations/Sso/.env" />
+    <File Path="Integrations/Sso/.gitignore" />
+    <File Path="Integrations/Sso/docker-compose.yml" />
+    <File Path="Integrations/Sso/manage-sso.ps1" />
+    <File Path="Integrations/Sso/README.md" />
+  </Folder>
+  <Folder Name="/Solution Items/">
+    <File Path=".gitignore" />
+    <File Path="docker-compose.yml" />
+  </Folder>
+  <Folder Name="/infra/">
+    <File Path="infra/README.md" />
+  </Folder>
+  <Folder Name="/infra/grafana/" />
+  <Folder Name="/infra/grafana/provisioning/" />
+  <Folder Name="/infra/grafana/provisioning/datasources/">
+    <File Path="infra/grafana/provisioning/datasources/datasources.yaml" />
+  </Folder>
+  <Folder Name="/infra/observability/">
+    <File Path="infra/observability/loki-config.yaml" />
+    <File Path="infra/observability/otel-collector-config.yaml" />
+    <File Path="infra/observability/prometheus.yml" />
+    <File Path="infra/observability/tempo-config.yaml" />
+  </Folder>
   <Folder Name="/.claude/">
     <File Path=".claude/CLAUDE.md" />
   </Folder>

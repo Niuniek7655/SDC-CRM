@@ -1,0 +1,10 @@
+# Backup files
+*.sql
+sso-backup.sql
+
+# Local overrides (opcjonalne)
+docker-compose.override.yml
+
+# Logs
+*.log
+

@@ -1,0 +1,104 @@
+# SimpleIdServer SSO - Local environment for SDC-CRM
+# 
+# This solution is fully self-contained - all Docker images
+# are pulled from public Docker Hub (does not require access to other repositories).
+#
+# Usage:
+#   docker compose up -d      # Start
+#   docker compose down       # Stop
+#   docker compose down -v    # Stop and delete data
+#
+# Access:
+#   Identity Server: http://localhost:5001/master
+#   Admin Panel:     http://localhost:5002/master/clients
+#   Login:           administrator / password
+
+name: sdc-crm-sso
+
+services:
+  # PostgreSQL database for Identity Server
+  sso-postgres:
+    image: postgres:17-alpine
+    container_name: sso-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: idserver
+      POSTGRES_PASSWORD: SsoSecurePassword123!
+      POSTGRES_DB: IdServer
+    ports:
+      - "5433:5432"
+    volumes:
+      - sso-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U idserver -d IdServer"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - sso-network
+
+  # Identity Server - main OAuth2/OpenID Connect authorization server
+  idserver:
+    image: simpleidserver/idserver:6.0.4
+    container_name: sso-idserver
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_URLS: "http://*:80"
+      ASPNETCORE_FORWARDEDHEADERS_ENABLED: "true"
+      # Storage configuration - PostgreSQL
+      StorageConfiguration__Type: "POSTGRE"
+      StorageConfiguration__ConnectionString: "Host=sso-postgres;Port=5432;Database=IdServer;Username=idserver;Password=SsoSecurePassword123!"
+      # Cache configuration - PostgreSQL
+      DistributedCacheConfiguration__Type: "POSTGRE"
+      DistributedCacheConfiguration__ConnectionString: "Host=sso-postgres;Port=5432;Database=IdServer;Username=idserver;Password=SsoSecurePassword123!"
+      # Message Broker - InMemory (for development)
+      MessageBrokerOptions__Transport: "INMEMORY"
+      # Admin panel URL
+      AdminUiUrl: "http://localhost:5002"
+    ports:
+      - "5001:80"
+    depends_on:
+      sso-postgres:
+        condition: service_healthy
+    networks:
+      - sso-network
+
+  # Identity Server Website - administration panel
+  idserverwebsite:
+    image: simpleidserver/website:6.0.4
+    container_name: sso-website
+    restart: unless-stopped
+    # Map localhost to host - allows container to connect to localhost:5001
+    extra_hosts:
+      - "localhost:host-gateway"
+    environment:
+      ASPNETCORE_URLS: "http://*:80"
+      ASPNETCORE_FORWARDEDHEADERS_ENABLED: "true"
+      # IdserverBaseUrl - using localhost:5001 which works both from container (via extra_hosts)
+      # and from user's browser
+      IdserverBaseUrl: "http://localhost:5001"
+      # OAuth client for Website (default in IdServer)
+      ClientId: "SIDS-manager"
+      ClientSecret: "password"
+      Scopes__0: "openid"
+      Scopes__1: "profile"
+      Scopes__2: "role"
+      # Realms enabled
+      IsReamEnabled: "true"
+      ForceHttps: "false"
+      IgnoreCertificateError: "true"
+    ports:
+      - "5002:80"
+    depends_on:
+      - idserver
+    networks:
+      - sso-network
+
+volumes:
+  sso-postgres-data:
+    name: sdc-crm-sso-postgres-data
+
+networks:
+  sso-network:
+    driver: bridge
+    name: sdc-crm-sso-network

@@ -91,6 +91,7 @@
   <Folder Name="/Backend/tests/">
     <Project Path="backend/tests/SDC.CRM.Domain.Tests/SDC.CRM.Domain.Tests.csproj" />
     <Project Path="backend/tests/SDC.CRM.Application.Tests/SDC.CRM.Application.Tests.csproj" />
+    <Project Path="backend/tests/SDC.CRM.Api.Tests/SDC.CRM.Api.Tests.csproj" />
   </Folder>
   <Folder Name="/doc/">
     <File Path="doc/01-slownik-jezyka-wszechobecnego.md" />

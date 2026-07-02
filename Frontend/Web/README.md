@@ -54,11 +54,24 @@ src/
 
 Spójna z backendem (`/api/leads`):
 
-- **Lista moich leadów** — `GET /api/leads/mine?salespersonId=...` (`/leads`)
+- **Lista moich leadów** — `GET /api/leads/mine` (`/leads`)
 - **Rejestracja leada** — `POST /api/leads` (`/leads/new`)
 
-> Uwaga: `salespersonId` jest tymczasowo zahardkodowane (`...0001`) do czasu dodania
-> uwierzytelniania. W kodzie oznaczono to komentarzami `TODO`.
+> Właściciel leada (handlowiec) jest ustalany po stronie backendu na podstawie
+> tożsamości z tokena dostępowego — front nie przekazuje już `salespersonId`.
+
+## Uwierzytelnianie (OIDC / SSO)
+
+Logowanie realizuje SimpleIdServer (Authorization Code + PKCE) przez bibliotekę
+`angular-oauth2-oidc`:
+
+- `core/auth/auth.service.ts` — cykl logowania/wylogowania, sygnały tożsamości i ról,
+- `core/auth/auth.interceptor.ts` — dołącza token `Bearer` do żądań `/api`,
+- `core/auth/auth.guard.ts` — chroni trasy i wymusza role (`data: { roles: [...] }`),
+- konfiguracja klienta w `src/environments/environment*.ts` (`sso`).
+
+Klient SPA `sdc-crm-web` musi być zarejestrowany w SSO (patrz
+`Integrations/Sso/README.md`). SSO musi być uruchomione przed startem aplikacji.
 
 ## Wymagania
 
@@ -85,7 +98,6 @@ npm test             # testy jednostkowe (Karma + Jasmine)
 
 ## Możliwe kolejne kroki
 
-- Dodać `core/auth` (logowanie, guardy tras, token interceptor) i prawdziwego `salespersonId`.
 - Dodać kolejne funkcje zgodnie z workflow CRM: `opportunities`, `orders`, `backoffice`.
 - Rozważyć tryb **zoneless** (`provideZonelessChangeDetection`) — projekt jest już oparty
   na signals i `OnPush`, więc migracja będzie prosta.

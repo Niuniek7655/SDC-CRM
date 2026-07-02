@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:viewmodels="clr-namespace:SDC.CRM.Mobile.Presentation.ViewModels"
+             x:Class="SDC.CRM.Mobile.Presentation.Views.LoginPage"
+             x:DataType="viewmodels:LoginViewModel"
+             Shell.NavBarIsVisible="False"
+             Title="Logowanie">
+
+    <Grid RowDefinitions="*,Auto,*" Padding="30">
+        <VerticalStackLayout Grid.Row="1" Spacing="25" VerticalOptions="Center">
+
+            <Image Source="dotnet_bot.png"
+                   HeightRequest="140"
+                   Aspect="AspectFit"
+                   SemanticProperties.Description="SDC CRM Mobile logo" />
+
+            <Label Text="SDC CRM"
+                   Style="{StaticResource Headline}"
+                   HorizontalTextAlignment="Center" />
+
+            <Label Text="Zaloguj się przez SSO, aby kontynuować."
+                   HorizontalTextAlignment="Center"
+                   TextColor="{StaticResource Gray500}" />
+
+            <Label Text="{Binding ErrorMessage}"
+                   TextColor="Red"
+                   HorizontalTextAlignment="Center"
+                   IsVisible="{Binding HasError}" />
+
+            <Button Text="Zaloguj się"
+                    Command="{Binding LoginCommand}"
+                    IsEnabled="{Binding IsNotBusy}"
+                    HorizontalOptions="Fill" />
+
+            <ActivityIndicator IsRunning="{Binding IsBusy}"
+                               IsVisible="{Binding IsBusy}"
+                               HorizontalOptions="Center" />
+
+        </VerticalStackLayout>
+    </Grid>
+
+</ContentPage>

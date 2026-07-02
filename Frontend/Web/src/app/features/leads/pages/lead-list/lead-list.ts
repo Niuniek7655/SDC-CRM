@@ -15,9 +15,6 @@ import { LeadService } from '../../data/lead.service';
 export class LeadList {
   private readonly leadService = inject(LeadService);
 
-  // TODO: replace with the authenticated salesperson id once auth is added.
-  protected readonly salespersonId = '00000000-0000-0000-0000-000000000001';
-
   protected readonly leads = signal<LeadSummary[]>([]);
   protected readonly loading = signal(false);
   protected readonly error = signal<string | null>(null);
@@ -30,7 +27,7 @@ export class LeadList {
     this.loading.set(true);
     this.error.set(null);
 
-    this.leadService.getMyLeads(this.salespersonId).subscribe({
+    this.leadService.getMyLeads().subscribe({
       next: (leads) => {
         this.leads.set(leads);
         this.loading.set(false);

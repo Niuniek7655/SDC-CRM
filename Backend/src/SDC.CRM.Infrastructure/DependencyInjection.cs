@@ -11,9 +11,10 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
-        var connectionString = configuration.GetConnectionString("Crm") ?? "Data Source=crm.db";
+        var connectionString = configuration.GetConnectionString("Crm")
+            ?? "Host=localhost;Port=5432;Database=appdb;Username=app;Password=app";
 
-        services.AddDbContext<CrmDbContext>(options => options.UseSqlite(connectionString));
+        services.AddDbContext<CrmDbContext>(options => options.UseNpgsql(connectionString));
 
         services.AddScoped<ILeadRepository, LeadRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();

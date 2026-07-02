@@ -40,6 +40,33 @@
   text-decoration: none;
 }
 
+.shell__user {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.shell__user-name {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.shell__logout {
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-muted);
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.shell__logout:hover {
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
 .shell__content {
   flex: 1;
   width: 100%;

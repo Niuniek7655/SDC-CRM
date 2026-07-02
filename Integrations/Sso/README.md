@@ -129,50 +129,97 @@ docker compose logs -f sso-postgres
 
 ---
 
-## 🔗 Integration with SDC-CRM
+## 🔗 Integration with SDC-CRM (IAM)
 
-### OAuth2/OpenID Connect Configuration
+The SDC-CRM IAM is wired as: **API = OAuth2 resource server** (validates JWT bearer
+tokens), **Angular Web + MAUI Mobile = public OIDC clients** (Authorization Code +
+PKCE). Both clients sign in against this SimpleIdServer and call the API with a
+bearer access token.
 
-Add to your SDC-CRM application configuration:
+### Required objects in SimpleIdServer
 
-```json
-{
-  "Authentication": {
-    "Authority": "http://localhost:5001/master",
-    "ClientId": "YOUR_CLIENT_ID",
-    "ClientSecret": "YOUR_CLIENT_SECRET",
-    "Scopes": ["openid", "profile", "email"]
-  }
-}
-```
+Register these once (via `register-sdc-crm-clients.ps1` or the admin panel):
 
-### .NET Example (appsettings.Development.json)
+| Object | Kind | Key values |
+|--------|------|-----------|
+| `sdc-crm-api` | API scope / resource | Audience `sdc-crm-api`, exposed |
+| `sdc-crm-web` | Public SPA client | Redirect `http://localhost:4200/`, PKCE, no secret |
+| `sdc-crm-mobile` | Public mobile client | Redirect `com.sdc.crm.mobile://callback`, PKCE, no secret |
+| CRM roles | Roles/groups | `Salesperson`, `SalesManager`, `BackofficeUser`, `BackofficeManager`, `Admin` |
+
+All clients request scopes: `openid profile email role offline_access sdc-crm-api`.
+
+### API configuration (already committed)
+
+`Backend/src/SDC.CRM.Api/appsettings*.json`:
 
 ```json
 {
   "Oidc": {
     "Authority": "http://localhost:5001/master",
-    "ClientId": "sdcCrm",
-    "ClientSecret": "your-secret-here",
+    "Audience": "sdc-crm-api",
     "RequireHttpsMetadata": false,
-    "SaveTokens": true,
-    "ResponseType": "code",
-    "Scopes": ["openid", "profile", "email", "roles"]
+    "ValidateAudience": true,
+    "RoleClaimType": "role",
+    "AllowedCorsOrigins": ["http://localhost:4200"]
   }
 }
 ```
 
-### Register a new OAuth client
+> Fallback for quick local testing before the `sdc-crm-api` scope exists: set
+> `"ValidateAudience": false`.
 
-1. Open the admin panel: http://localhost:5002
-2. Log in as `administrator` / `password`
-3. Go to **Clients** → **Add Client**
-4. Fill in:
-   - **Client ID:** e.g. `sdcCrm`
-   - **Client Secret:** generate a secure password
-   - **Redirect URIs:** e.g. `https://localhost:7001/signin-oidc`
-   - **Grant Types:** `authorization_code`, `refresh_token`
-   - **Scopes:** `openid`, `profile`, `email`
+### Register the OAuth clients automatically
+
+```powershell
+cd D:\Users\szymo\repo\SDC-CRM\Integrations\Sso
+./register-sdc-crm-clients.ps1
+```
+
+The script authenticates with the seeded `SIDS-manager` client and creates the
+API scope, the API resource, the two public clients and the CRM role scopes. If
+your environment differs, register them manually in the admin panel
+(http://localhost:5002/master/clients).
+
+### Assign CRM roles to a user (required)
+
+The API authorizes by the `role` claim, so a user must carry CRM roles to use
+protected endpoints. Roles are assigned to groups, and users belong to groups:
+
+1. Admin panel → **Groups** → create a group (e.g. `SDC CRM Admins`).
+2. Open the group → **Roles** → add the role scope(s) created by the script
+   (`Admin`, `Salesperson`, ...).
+3. Admin panel → **Users** → open your user (e.g. `administrator`) → **Groups** →
+   add the group.
+4. Sign out / sign in again so a fresh token carries the `role` claim.
+
+> The role scope names (`Salesperson`, `SalesManager`, `BackofficeUser`,
+> `BackofficeManager`, `Admin`) match the backend `CrmRoles` constants exactly.
+
+### End-to-end run order
+
+```powershell
+# 1. Identity provider (already running in your case)
+cd D:\Users\szymo\repo\SDC-CRM\Integrations\Sso
+./manage-sso.ps1 status
+./register-sdc-crm-clients.ps1          # one-time client/scope registration
+
+# 2. Backend API (resource server)  -> http://localhost:5080
+cd ..\..\Backend\src\SDC.CRM.Api
+dotnet run
+
+# 3. Angular web (public OIDC client) -> http://localhost:4200
+cd ..\..\..\Frontend\Web
+npm install
+npm start
+
+# 4. MAUI mobile (public OIDC client)
+#    Android emulator: map device localhost to the host first:
+#      adb reverse tcp:5001 tcp:5001
+#      adb reverse tcp:5080 tcp:5080
+cd ..\Mobile\src\SDC.CRM.Mobile
+dotnet build -t:Run -f net10.0-android
+```
 
 ---
 
@@ -207,7 +254,7 @@ The admin panel allows:
 | **UserInfo** | http://localhost:5001/master/userinfo |
 | **JWKS** | http://localhost:5001/master/jwks |
 | **End Session** | http://localhost:5001/master/end_session |
-| **Introspection** | http://localhost:5001/master/token/introspect |
+| **Introspection** | http://localhost:5001/master/token_info |
 | **Revocation** | http://localhost:5001/master/token/revoke |
 
 ---

@@ -1,0 +1,326 @@
+{
+  "events": [
+    {
+      "event": "CustomerCreated",
+      "publisher_context": "Customer Management",
+      "publisher_aggregate": "Customer"
+    },
+    {
+      "event": "CustomerUpdated",
+      "publisher_context": "Customer Management",
+      "publisher_aggregate": "Customer"
+    },
+    {
+      "event": "ContactPersonAdded",
+      "publisher_context": "Customer Management",
+      "publisher_aggregate": "Customer"
+    },
+    {
+      "event": "CustomerStatusChanged",
+      "publisher_context": "Customer Management",
+      "publisher_aggregate": "Customer"
+    },
+    {
+      "event": "LeadRegistered",
+      "publisher_context": "Lead & Pipeline",
+      "publisher_aggregate": "Lead"
+    },
+    {
+      "event": "LeadAssigned",
+      "publisher_context": "Lead & Pipeline",
+      "publisher_aggregate": "Lead"
+    },
+    {
+      "event": "LeadQualified",
+      "publisher_context": "Lead & Pipeline",
+      "publisher_aggregate": "Lead"
+    },
+    {
+      "event": "LeadRejected",
+      "publisher_context": "Lead & Pipeline",
+      "publisher_aggregate": "Lead"
+    },
+    {
+      "event": "OpportunityCreated",
+      "publisher_context": "Lead & Pipeline",
+      "publisher_aggregate": "Opportunity"
+    },
+    {
+      "event": "OpportunityStageChanged",
+      "publisher_context": "Lead & Pipeline",
+      "publisher_aggregate": "Opportunity"
+    },
+    {
+      "event": "OpportunityWon",
+      "publisher_context": "Lead & Pipeline",
+      "publisher_aggregate": "Opportunity"
+    },
+    {
+      "event": "OpportunityLost",
+      "publisher_context": "Lead & Pipeline",
+      "publisher_aggregate": "Opportunity"
+    },
+    {
+      "event": "PipelineConfigured",
+      "publisher_context": "Lead & Pipeline",
+      "publisher_aggregate": "Pipeline"
+    },
+    {
+      "event": "PipelineStageChanged",
+      "publisher_context": "Lead & Pipeline",
+      "publisher_aggregate": "Pipeline"
+    },
+    {
+      "event": "ActivityRegistered",
+      "publisher_context": "Sales Activity",
+      "publisher_aggregate": "SalesActivity"
+    },
+    {
+      "event": "ActivityCompleted",
+      "publisher_context": "Sales Activity",
+      "publisher_aggregate": "SalesActivity"
+    },
+    {
+      "event": "FollowUpScheduled",
+      "publisher_context": "Sales Activity",
+      "publisher_aggregate": "FollowUpTask"
+    },
+    {
+      "event": "FollowUpCompleted",
+      "publisher_context": "Sales Activity",
+      "publisher_aggregate": "FollowUpTask"
+    },
+    {
+      "event": "NoteAdded",
+      "publisher_context": "Sales Activity",
+      "publisher_aggregate": "Note"
+    },
+    {
+      "event": "NoteUpdated",
+      "publisher_context": "Sales Activity",
+      "publisher_aggregate": "Note"
+    },
+    {
+      "event": "SalesOrderCreated",
+      "publisher_context": "Sales Order Capture",
+      "publisher_aggregate": "SalesOrder"
+    },
+    {
+      "event": "SalesOrderSubmitted",
+      "publisher_context": "Sales Order Capture",
+      "publisher_aggregate": "SalesOrder"
+    },
+    {
+      "event": "SalesOrderCancelled",
+      "publisher_context": "Sales Order Capture",
+      "publisher_aggregate": "SalesOrder"
+    },
+    {
+      "event": "OrderProcessingStarted",
+      "publisher_context": "Backoffice Order Processing",
+      "publisher_aggregate": "OrderProcess"
+    },
+    {
+      "event": "OrderAssigned",
+      "publisher_context": "Backoffice Order Processing",
+      "publisher_aggregate": "OrderProcess"
+    },
+    {
+      "event": "MissingInformationRequested",
+      "publisher_context": "Backoffice Order Processing",
+      "publisher_aggregate": "OrderProcess"
+    },
+    {
+      "event": "MissingInformationProvided",
+      "publisher_context": "Backoffice Order Processing",
+      "publisher_aggregate": "OrderProcess"
+    },
+    {
+      "event": "OrderAcceptedForFulfillment",
+      "publisher_context": "Backoffice Order Processing",
+      "publisher_aggregate": "OrderProcess"
+    },
+    {
+      "event": "OrderCompleted",
+      "publisher_context": "Backoffice Order Processing",
+      "publisher_aggregate": "OrderProcess"
+    },
+    {
+      "event": "OrderRejected",
+      "publisher_context": "Backoffice Order Processing",
+      "publisher_aggregate": "OrderProcess"
+    },
+    {
+      "event": "BackofficeTaskCreated",
+      "publisher_context": "Backoffice Order Processing",
+      "publisher_aggregate": "BackofficeTask"
+    },
+    {
+      "event": "BackofficeTaskCompleted",
+      "publisher_context": "Backoffice Order Processing",
+      "publisher_aggregate": "BackofficeTask"
+    },
+    {
+      "event": "IntegrationJobCreated",
+      "publisher_context": "Integration Context",
+      "publisher_aggregate": "IntegrationJob"
+    },
+    {
+      "event": "IntegrationJobSucceeded",
+      "publisher_context": "Integration Context",
+      "publisher_aggregate": "IntegrationJob"
+    },
+    {
+      "event": "IntegrationJobFailed",
+      "publisher_context": "Integration Context",
+      "publisher_aggregate": "IntegrationJob"
+    },
+    {
+      "event": "ExternalMappingCreated",
+      "publisher_context": "Integration Context",
+      "publisher_aggregate": "ExternalSystemMapping"
+    },
+    {
+      "event": "InvoiceRequested",
+      "publisher_context": "Integration Context",
+      "publisher_aggregate": "InvoiceRequest"
+    },
+    {
+      "event": "InvoiceIssued",
+      "publisher_context": "Integration Context",
+      "publisher_aggregate": "InvoiceRequest"
+    },
+    {
+      "event": "PaymentReceived",
+      "publisher_context": "Integration Context",
+      "publisher_aggregate": "InvoiceRequest"
+    },
+    {
+      "event": "UserCreated",
+      "publisher_context": "Identity & Access",
+      "publisher_aggregate": "User"
+    },
+    {
+      "event": "UserDeactivated",
+      "publisher_context": "Identity & Access",
+      "publisher_aggregate": "User"
+    },
+    {
+      "event": "RoleAssigned",
+      "publisher_context": "Identity & Access",
+      "publisher_aggregate": "Role"
+    },
+    {
+      "event": "UserAssignedToSalesTeam",
+      "publisher_context": "Identity & Access",
+      "publisher_aggregate": "SalesTeam"
+    }
+  ],
+  "integration_communication": [
+    {
+      "event": "CustomerCreated / CustomerUpdated",
+      "publisher": "Customer.Customer Management",
+      "subscribers": [
+        "Lead & Pipeline",
+        "Sales Activity",
+        "Reporting & Analytics"
+      ],
+      "when": "po utworzeniu lub zmianie danych klienta"
+    },
+    {
+      "event": "OpportunityWon",
+      "publisher": "Opportunity.Lead & Pipeline",
+      "subscribers": [
+        "Sales Order Capture",
+        "Reporting & Analytics"
+      ],
+      "when": "gdy sprzedaż została wygrana"
+    },
+    {
+      "event": "OpportunityLost",
+      "publisher": "Opportunity.Lead & Pipeline",
+      "subscribers": [
+        "Reporting & Analytics"
+      ],
+      "when": "gdy szansa została przegrana"
+    },
+    {
+      "event": "SalesOrderCreated",
+      "publisher": "SalesOrder.Sales Order Capture",
+      "subscribers": [
+        "Reporting & Analytics"
+      ],
+      "when": "po utworzeniu szkicu zamówienia"
+    },
+    {
+      "event": "SalesOrderSubmitted",
+      "publisher": "SalesOrder.Sales Order Capture",
+      "subscribers": [
+        "Backoffice Order Processing",
+        "Reporting & Analytics"
+      ],
+      "when": "gdy handlowiec przekazuje kompletne zamówienie"
+    },
+    {
+      "event": "MissingInformationRequested",
+      "publisher": "OrderProcess.Backoffice Order Processing",
+      "subscribers": [
+        "Sales Activity"
+      ],
+      "when": "gdy backoffice wykryje braki w danych"
+    },
+    {
+      "event": "MissingInformationProvided",
+      "publisher": "Sales Activity / Backoffice",
+      "subscribers": [
+        "Backoffice Order Processing"
+      ],
+      "when": "gdy handlowiec uzupełni brakujące dane"
+    },
+    {
+      "event": "OrderAcceptedForFulfillment",
+      "publisher": "OrderProcess.Backoffice Order Processing",
+      "subscribers": [
+        "Integration Context",
+        "Reporting & Analytics"
+      ],
+      "when": "gdy zamówienie zostaje zaakceptowane do realizacji"
+    },
+    {
+      "event": "InvoiceRequested",
+      "publisher": "Backoffice / Integration",
+      "subscribers": [
+        "Integration Context"
+      ],
+      "when": "gdy trzeba wystawić fakturę lub przekazać dane do ERP"
+    },
+    {
+      "event": "InvoiceIssued",
+      "publisher": "Integration Context",
+      "subscribers": [
+        "Reporting & Analytics",
+        "Backoffice Order Processing"
+      ],
+      "when": "gdy faktura została wystawiona"
+    },
+    {
+      "event": "PaymentReceived",
+      "publisher": "Integration Context",
+      "subscribers": [
+        "Reporting & Analytics",
+        "Backoffice Order Processing"
+      ],
+      "when": "gdy pojawi się informacja o płatności"
+    },
+    {
+      "event": "OrderCompleted",
+      "publisher": "OrderProcess.Backoffice Order Processing",
+      "subscribers": [
+        "Reporting & Analytics",
+        "Sales Activity",
+        "Integration Context"
+      ],
+      "when": "gdy proces obsługi zamówienia zostaje zakończony"
+    }
+  ]
+}

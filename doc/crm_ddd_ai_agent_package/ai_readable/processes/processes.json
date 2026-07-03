@@ -1,0 +1,681 @@
+{
+  "processes": [
+    {
+      "id": "process_01_lead_pipeline",
+      "title": "Proces 1 – Obsługa leada i pipeline sprzedażowego",
+      "bounded_contexts": [
+        "Customer Management",
+        "Lead & Pipeline",
+        "Sales Activity",
+        "Reporting & Analytics"
+      ],
+      "aggregates": [
+        "Lead",
+        "Opportunity",
+        "Pipeline",
+        "SalesActivity",
+        "FollowUpTask",
+        "Note"
+      ],
+      "events": [
+        "LeadRejected",
+        "OpportunityLost",
+        "OpportunityWon"
+      ],
+      "steps": [
+        {
+          "no": 1,
+          "name": "Pozyskanie leada",
+          "type": "start"
+        },
+        {
+          "no": 2,
+          "name": "Rejestracja leada",
+          "aggregate": "Lead",
+          "bc": "Lead & Pipeline"
+        },
+        {
+          "no": 3,
+          "name": "Przypisanie handlowca i priorytetu",
+          "aggregate": "Lead",
+          "bc": "Lead & Pipeline"
+        },
+        {
+          "no": 4,
+          "name": "Pierwszy kontakt / kwalifikacja",
+          "aggregates": [
+            "SalesActivity",
+            "Note",
+            "Lead"
+          ],
+          "bc": [
+            "Sales Activity",
+            "Lead & Pipeline"
+          ]
+        },
+        {
+          "no": 5,
+          "name": "Lead kwalifikowany?",
+          "type": "decision"
+        },
+        {
+          "no": "5N",
+          "name": "Oznaczenie jako odrzucony / utracony",
+          "aggregate": "Lead",
+          "event": "LeadRejected"
+        },
+        {
+          "no": 6,
+          "name": "Utworzenie Opportunity",
+          "aggregates": [
+            "Lead",
+            "Opportunity"
+          ],
+          "event": "OpportunityCreated"
+        },
+        {
+          "no": 7,
+          "name": "Przenoszenie po etapach pipeline",
+          "aggregates": [
+            "Opportunity",
+            "Pipeline"
+          ]
+        },
+        {
+          "no": 8,
+          "name": "Planowanie follow-upów",
+          "aggregates": [
+            "FollowUpTask",
+            "SalesActivity",
+            "Note"
+          ]
+        },
+        {
+          "no": 9,
+          "name": "Sprzedaż wygrana?",
+          "type": "decision"
+        },
+        {
+          "no": "9N",
+          "name": "Zamknięcie jako OpportunityLost",
+          "aggregate": "Opportunity",
+          "event": "OpportunityLost"
+        },
+        {
+          "no": "9T",
+          "name": "Publikacja zdarzenia OpportunityWon",
+          "aggregate": "Opportunity",
+          "event": "OpportunityWon"
+        },
+        {
+          "no": 10,
+          "name": "Przekazanie do procesu zamówienia",
+          "consumer": "Sales Order Capture"
+        }
+      ],
+      "read_models": [
+        "SalesPipelineReport",
+        "SalespersonKpiReport"
+      ]
+    },
+    {
+      "id": "process_02_customer_management",
+      "title": "Proces 2 – Zarządzanie klientem",
+      "bounded_contexts": [
+        "Customer Management",
+        "Sales Activity",
+        "Sales Order Capture",
+        "Reporting & Analytics"
+      ],
+      "aggregates": [
+        "Customer",
+        "SalesActivity",
+        "SalesOrder"
+      ],
+      "entities_value_objects": [
+        "ContactPerson",
+        "CustomerAddress",
+        "CustomerStatus",
+        "TaxId",
+        "EmailAddress",
+        "PhoneNumber",
+        "Address"
+      ],
+      "events": [
+        "CustomerCreated",
+        "CustomerUpdated"
+      ],
+      "steps": [
+        {
+          "no": 1,
+          "name": "Pozyskanie danych klienta",
+          "type": "start"
+        },
+        {
+          "no": 2,
+          "name": "Weryfikacja czy klient już istnieje",
+          "aggregate": "Customer"
+        },
+        {
+          "no": 3,
+          "name": "Klient istnieje?",
+          "type": "decision"
+        },
+        {
+          "no": "3T",
+          "name": "Aktualizacja danych klienta",
+          "aggregate": "Customer",
+          "event": "CustomerUpdated"
+        },
+        {
+          "no": "3N",
+          "name": "Utworzenie klienta",
+          "aggregate": "Customer",
+          "event": "CustomerCreated"
+        },
+        {
+          "no": 4,
+          "name": "Dodanie danych kontaktowych i adresów",
+          "entities": [
+            "ContactPerson",
+            "CustomerAddress"
+          ]
+        },
+        {
+          "no": 5,
+          "name": "Nadanie statusu klienta",
+          "value_objects": [
+            "CustomerStatus",
+            "TaxId",
+            "EmailAddress",
+            "PhoneNumber",
+            "Address"
+          ]
+        },
+        {
+          "no": 6,
+          "name": "Powiązanie klienta z aktywnościami / sprzedażą",
+          "references_by_id": [
+            "SalesActivity",
+            "SalesOrder"
+          ]
+        },
+        {
+          "no": 7,
+          "name": "Klient gotowy do użycia w sprzedaży i zamówieniach",
+          "type": "end"
+        }
+      ],
+      "read_models": [
+        "CustomerBaseReport",
+        "SalesPipelineReport"
+      ]
+    },
+    {
+      "id": "process_03_sales_activity",
+      "title": "Proces 3 – Planowanie i rejestracja aktywności handlowca",
+      "bounded_contexts": [
+        "Customer Management",
+        "Lead & Pipeline",
+        "Sales Activity",
+        "Reporting & Analytics"
+      ],
+      "aggregates": [
+        "FollowUpTask",
+        "SalesActivity",
+        "Note",
+        "Lead",
+        "Opportunity"
+      ],
+      "entities_value_objects": [
+        "Reminder",
+        "DueDate",
+        "TaskStatus",
+        "TaskPriority",
+        "ActivityType",
+        "ActivityOutcome",
+        "ActivityTimeRange",
+        "NoteContent"
+      ],
+      "events": [
+        "MissingInformationRequested",
+        "ActivityRegistered"
+      ],
+      "steps": [
+        {
+          "no": 1,
+          "name": "Wybór klienta / leada / opportunity",
+          "type": "start"
+        },
+        {
+          "no": 2,
+          "name": "Powiązanie przez ID",
+          "references_by_id": [
+            "Customer",
+            "Lead",
+            "Opportunity"
+          ]
+        },
+        {
+          "no": 3,
+          "name": "Zaplanowanie kontaktu",
+          "aggregate": "FollowUpTask"
+        },
+        {
+          "no": 4,
+          "name": "Ustawienie terminu i priorytetu",
+          "aggregate": "FollowUpTask",
+          "value_objects": [
+            "DueDate",
+            "TaskPriority",
+            "TaskStatus"
+          ]
+        },
+        {
+          "no": 5,
+          "name": "Realizacja telefonu / maila / spotkania",
+          "aggregate": "SalesActivity",
+          "value_objects": [
+            "ActivityType",
+            "ActivityTimeRange",
+            "ActivityOutcome"
+          ]
+        },
+        {
+          "no": 6,
+          "name": "Dodanie notatki",
+          "aggregate": "Note",
+          "value_objects": [
+            "NoteContent"
+          ]
+        },
+        {
+          "no": 7,
+          "name": "Potrzebny kolejny follow-up?",
+          "type": "decision"
+        },
+        {
+          "no": "7T",
+          "name": "Utworzenie kolejnego FollowUpTask",
+          "aggregate": "FollowUpTask"
+        },
+        {
+          "no": 8,
+          "name": "Czy wynik wpływa na pipeline?",
+          "type": "decision"
+        },
+        {
+          "no": "8T",
+          "name": "Aktualizacja Lead / Opportunity",
+          "aggregates": [
+            "Lead",
+            "Opportunity"
+          ]
+        },
+        {
+          "no": 9,
+          "name": "Aktywność zamknięta",
+          "type": "end"
+        }
+      ],
+      "read_models": [
+        "SalespersonKpiReport",
+        "ActivityReport"
+      ]
+    },
+    {
+      "id": "process_04_sales_finalization_order_capture",
+      "title": "Proces 4 – Finalizacja sprzedaży i wprowadzanie zamówienia",
+      "bounded_contexts": [
+        "Customer Management",
+        "Lead & Pipeline",
+        "Sales Order Capture",
+        "Backoffice Order Processing",
+        "Reporting & Analytics"
+      ],
+      "aggregates": [
+        "Opportunity",
+        "Customer",
+        "SalesOrder"
+      ],
+      "entities_value_objects": [
+        "SalesOrderLine",
+        "OrderTerms",
+        "OrderCustomerSnapshot",
+        "OrderStatus",
+        "Money"
+      ],
+      "events": [
+        "OpportunityWon",
+        "OpportunityLost",
+        "SalesOrderCreated",
+        "SalesOrderSubmitted"
+      ],
+      "steps": [
+        {
+          "no": 1,
+          "name": "Opportunity na końcowym etapie",
+          "aggregate": "Opportunity",
+          "type": "start"
+        },
+        {
+          "no": 2,
+          "name": "Sprzedaż wygrana?",
+          "aggregate": "Opportunity",
+          "type": "decision"
+        },
+        {
+          "no": "2N",
+          "name": "Publikacja OpportunityLost",
+          "event": "OpportunityLost"
+        },
+        {
+          "no": 3,
+          "name": "Publikacja OpportunityWon",
+          "aggregate": "Opportunity",
+          "event": "OpportunityWon"
+        },
+        {
+          "no": 4,
+          "name": "Utworzenie szkicu zamówienia",
+          "aggregate": "SalesOrder",
+          "event": "SalesOrderCreated"
+        },
+        {
+          "no": 5,
+          "name": "Pobranie snapshotu klienta",
+          "aggregates": [
+            "Customer",
+            "SalesOrder"
+          ],
+          "communication": "sync query"
+        },
+        {
+          "no": 6,
+          "name": "Dodanie pozycji zamówienia",
+          "aggregate": "SalesOrder",
+          "entity": "SalesOrderLine"
+        },
+        {
+          "no": 7,
+          "name": "Uzupełnienie warunków zamówienia",
+          "aggregate": "SalesOrder",
+          "value_objects": [
+            "OrderTerms",
+            "Money",
+            "OrderStatus",
+            "OrderCustomerSnapshot"
+          ]
+        },
+        {
+          "no": 8,
+          "name": "Zamówienie kompletne?",
+          "aggregate": "SalesOrder",
+          "type": "decision"
+        },
+        {
+          "no": "8N",
+          "name": "Powrót do uzupełnienia danych"
+        },
+        {
+          "no": 9,
+          "name": "Przekazanie kompletnego zamówienia",
+          "command": "SubmitSalesOrder",
+          "aggregate": "SalesOrder"
+        },
+        {
+          "no": 10,
+          "name": "Publikacja SalesOrderSubmitted",
+          "event": "SalesOrderSubmitted"
+        },
+        {
+          "no": 11,
+          "name": "Backoffice rozpoczyna obsługę",
+          "consumer": "Backoffice Order Processing"
+        }
+      ],
+      "read_models": [
+        "SalesPipelineReport",
+        "OrderIntakeReport"
+      ]
+    },
+    {
+      "id": "process_05_backoffice_order_processing",
+      "title": "Proces 5 – Obsługa zamówienia przez backoffice",
+      "bounded_contexts": [
+        "Sales Order Capture",
+        "Backoffice Order Processing",
+        "Sales Activity",
+        "Integration Context",
+        "Reporting & Analytics"
+      ],
+      "aggregates": [
+        "SalesOrder",
+        "OrderProcess",
+        "BackofficeTask",
+        "FollowUpTask"
+      ],
+      "entities_value_objects": [
+        "OrderClarification",
+        "StatusHistoryEntry",
+        "FulfillmentRequest",
+        "ProcessStatus",
+        "FulfillmentData",
+        "TaskType",
+        "TaskStatus",
+        "DueDate"
+      ],
+      "events": [
+        "SalesOrderSubmitted",
+        "MissingInformationRequested",
+        "MissingInformationProvided",
+        "OrderAcceptedForFulfillment",
+        "OrderCompleted"
+      ],
+      "steps": [
+        {
+          "no": 1,
+          "name": "Otrzymanie zdarzenia SalesOrderSubmitted",
+          "event": "SalesOrderSubmitted",
+          "type": "start"
+        },
+        {
+          "no": 2,
+          "name": "Utworzenie procesu obsługi",
+          "aggregate": "OrderProcess"
+        },
+        {
+          "no": 3,
+          "name": "Przypisanie do pracownika backoffice",
+          "aggregates": [
+            "OrderProcess",
+            "BackofficeTask"
+          ]
+        },
+        {
+          "no": 4,
+          "name": "Weryfikacja kompletności zamówienia",
+          "aggregate": "OrderProcess"
+        },
+        {
+          "no": 5,
+          "name": "Braki w zamówieniu?",
+          "type": "decision"
+        },
+        {
+          "no": "5T",
+          "name": "Utworzenie wyjaśnienia / prośby o dane",
+          "entity": "OrderClarification",
+          "event": "MissingInformationRequested"
+        },
+        {
+          "no": "5T2",
+          "name": "Utworzenie zadania follow-up",
+          "aggregate": "FollowUpTask"
+        },
+        {
+          "no": "5T3",
+          "name": "Otrzymanie MissingInformationProvided",
+          "event": "MissingInformationProvided"
+        },
+        {
+          "no": 6,
+          "name": "Akceptacja do realizacji",
+          "aggregate": "OrderProcess"
+        },
+        {
+          "no": 7,
+          "name": "Utworzenie zlecenia operacyjnego",
+          "aggregates": [
+            "OrderProcess",
+            "BackofficeTask"
+          ],
+          "entity": "FulfillmentRequest"
+        },
+        {
+          "no": 8,
+          "name": "Publikacja OrderAcceptedForFulfillment",
+          "event": "OrderAcceptedForFulfillment"
+        },
+        {
+          "no": 9,
+          "name": "Monitorowanie realizacji i aktualizacja statusu",
+          "aggregates": [
+            "OrderProcess",
+            "StatusHistoryEntry"
+          ]
+        },
+        {
+          "no": 10,
+          "name": "Realizacja zakończona?",
+          "type": "decision"
+        },
+        {
+          "no": 11,
+          "name": "Zamknięcie procesu",
+          "event": "OrderCompleted"
+        }
+      ],
+      "read_models": [
+        "OrderProcessingReport",
+        "RevenueReport"
+      ]
+    },
+    {
+      "id": "process_06_integration_invoice_payment_reporting",
+      "title": "Proces 6 – Integracja, fakturowanie, płatność i aktualizacja raportów",
+      "bounded_contexts": [
+        "Backoffice Order Processing",
+        "Integration Context",
+        "Reporting & Analytics"
+      ],
+      "aggregates": [
+        "IntegrationJob",
+        "ExternalSystemMapping",
+        "InvoiceRequest"
+      ],
+      "entities_value_objects": [
+        "JobAttempt",
+        "ExternalSystemName",
+        "JobStatus",
+        "CorrelationId",
+        "ExternalId",
+        "InternalId",
+        "InvoiceData",
+        "BillingAddress"
+      ],
+      "events": [
+        "OrderAcceptedForFulfillment",
+        "InvoiceRequested",
+        "InvoiceIssued",
+        "PaymentReceived"
+      ],
+      "steps": [
+        {
+          "no": 1,
+          "name": "OrderAcceptedForFulfillment / InvoiceRequested",
+          "type": "start",
+          "events": [
+            "OrderAcceptedForFulfillment",
+            "InvoiceRequested"
+          ]
+        },
+        {
+          "no": 2,
+          "name": "Utworzenie zadania integracyjnego",
+          "aggregate": "IntegrationJob",
+          "entity": "JobAttempt"
+        },
+        {
+          "no": 3,
+          "name": "Mapowanie identyfikatorów",
+          "aggregate": "ExternalSystemMapping",
+          "value_objects": [
+            "ExternalId",
+            "InternalId"
+          ]
+        },
+        {
+          "no": 4,
+          "name": "Przekazanie danych do ERP / fakturowania",
+          "aggregates": [
+            "IntegrationJob",
+            "InvoiceRequest"
+          ]
+        },
+        {
+          "no": 5,
+          "name": "Czy integracja zakończona sukcesem?",
+          "type": "decision"
+        },
+        {
+          "no": "5N",
+          "name": "Ponowienie próby / aktualizacja JobStatus",
+          "aggregate": "IntegrationJob",
+          "value_objects": [
+            "JobStatus",
+            "CorrelationId"
+          ]
+        },
+        {
+          "no": 6,
+          "name": "Wystawienie faktury",
+          "aggregate": "InvoiceRequest",
+          "value_objects": [
+            "InvoiceData",
+            "BillingAddress"
+          ]
+        },
+        {
+          "no": 7,
+          "name": "Publikacja InvoiceIssued",
+          "event": "InvoiceIssued"
+        },
+        {
+          "no": 8,
+          "name": "Odbiór statusu płatności",
+          "event": "PaymentReceived"
+        },
+        {
+          "no": 9,
+          "name": "Aktualizacja projekcji raportowych",
+          "read_models": [
+            "RevenueReport",
+            "OrderProcessingReport",
+            "SalespersonKpiReport"
+          ]
+        },
+        {
+          "no": 10,
+          "name": "Raporty zaktualizowane",
+          "type": "end"
+        }
+      ],
+      "read_models": [
+        "RevenueReport",
+        "OrderProcessingReport",
+        "SalespersonKpiReport"
+      ]
+    }
+  ]
+}

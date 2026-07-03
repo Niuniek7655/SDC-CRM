@@ -1,0 +1,14 @@
+flowchart LR
+  Start([Pozyskanie danych klienta]) --> Verify[Weryfikacja czy klient istnieje\nAggregate: Customer]
+  Verify --> Exists{Klient istnieje?}
+  Exists -- TAK --> Update[Aktualizacja danych klienta\nAggregate: Customer]
+  Exists -- NIE --> Create[Utworzenie klienta\nAggregate: Customer]
+  Update -. CustomerUpdated .-> Activity[SalesActivity reference by CustomerId]
+  Create -. CustomerCreated .-> Activity
+  Update --> ContactData[Dodanie danych kontaktowych i adresów\nEntities: ContactPerson, CustomerAddress]
+  Create --> ContactData
+  ContactData --> Status[Nadanie statusu klienta\nVO: CustomerStatus, TaxId, EmailAddress, PhoneNumber, Address]
+  Status --> Link[Powiązanie przez ID z SalesActivity i SalesOrder]
+  Link --> End([Klient gotowy do użycia])
+  Status -. projection .-> Reports[Reporting: CustomerBaseReport / SalesPipelineReport]
+  Order[Sales Order Capture] -->|sync query: customer snapshot| Verify

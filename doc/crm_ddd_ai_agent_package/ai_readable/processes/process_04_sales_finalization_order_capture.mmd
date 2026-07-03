@@ -1,0 +1,15 @@
+flowchart LR
+  Start([Opportunity na końcowym etapie]) --> Won{Sprzedaż wygrana?}
+  Won -- NIE --> Lost[[Event: OpportunityLost]]
+  Lost -. projection .-> PipelineReport[SalesPipelineReport]
+  Won -- TAK --> OppWon[[Event: OpportunityWon]]
+  OppWon -. async .-> Draft[Utworzenie szkicu zamówienia\nAggregate: SalesOrder]
+  Draft -. SalesOrderCreated .-> OrderReport[OrderIntakeReport]
+  Draft --> Snapshot[Pobranie snapshotu klienta\nCustomer -> OrderCustomerSnapshot]
+  Snapshot --> Lines[Dodanie pozycji zamówienia\nEntity: SalesOrderLine]
+  Lines --> Terms[Uzupełnienie warunków\nVO: OrderTerms, Money, OrderStatus]
+  Terms --> Complete{Zamówienie kompletne?}
+  Complete -- NIE --> Terms
+  Complete -- TAK --> Submit[SubmitSalesOrder\nAggregate: SalesOrder]
+  Submit -. SalesOrderSubmitted .-> Backoffice[Backoffice creates OrderProcess]
+  Submit -. projection .-> OrderReport

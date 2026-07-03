@@ -176,25 +176,34 @@ cd D:\Users\szymo\repo\SDC-CRM\Integrations\Sso
 ./register-sdc-crm-clients.ps1
 ```
 
-The script authenticates with the seeded `SIDS-manager` client and creates the
-API scope, the API resource, the two public clients and the CRM role scopes. If
-your environment differs, register them manually in the admin panel
-(http://localhost:5002/master/clients).
+The script authenticates with the seeded `SIDS-manager` client and provisions
+**everything** needed, so nothing has to be clicked in the admin UI:
 
-### Assign CRM roles to a user (required)
+- the API scope + API resource `sdc-crm-api` (and links them),
+- the CRM role scopes (`Salesperson`, `SalesManager`, `BackofficeUser`,
+  `BackofficeManager`, `Admin`),
+- the two **public** clients `sdc-crm-web` (SPA) and `sdc-crm-mobile` (mobile),
+  created with `is_public=true` (no secret, Authorization Code + PKCE),
+- one group per role (`SDC CRM <Role>`) with the matching role attached,
+- assignment of the `administrator` user to the requested role group(s).
 
-The API authorizes by the `role` claim, so a user must carry CRM roles to use
-protected endpoints. Roles are assigned to groups, and users belong to groups:
+The script is idempotent - it is safe to re-run. Useful switches:
 
-1. Admin panel → **Groups** → create a group (e.g. `SDC CRM Admins`).
-2. Open the group → **Roles** → add the role scope(s) created by the script
-   (`Admin`, `Salesperson`, ...).
-3. Admin panel → **Users** → open your user (e.g. `administrator`) → **Groups** →
-   add the group.
-4. Sign out / sign in again so a fresh token carries the `role` claim.
+```powershell
+# Give the administrator more than just the Admin role
+./register-sdc-crm-clients.ps1 -AdminUserRoles Admin,SalesManager
+
+# Assign a different user, or skip user/group provisioning entirely
+./register-sdc-crm-clients.ps1 -AdminUserLogin alice
+./register-sdc-crm-clients.ps1 -SkipUserAssignment
+./register-sdc-crm-clients.ps1 -SkipGroups -SkipRoles
+```
 
 > The role scope names (`Salesperson`, `SalesManager`, `BackofficeUser`,
 > `BackofficeManager`, `Admin`) match the backend `CrmRoles` constants exactly.
+
+After running the script, **sign out / sign in again** so a fresh token carries
+the `role` claim.
 
 ### End-to-end run order
 

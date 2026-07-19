@@ -10,7 +10,7 @@
 #
 # Access:
 #   Identity Server: http://localhost:5001/master
-#   Admin Panel:     http://localhost:5002/master/clients
+#   Admin Panel:     http://localhost:5002/master/clients (or /users, /groups, /scopes)
 #   Login:           administrator / password
 
 name: sdc-crm-sso

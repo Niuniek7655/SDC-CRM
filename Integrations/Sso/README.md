@@ -234,10 +234,28 @@ dotnet build -t:Run -f net10.0-android
 
 ## 🏗️ User Management
 
-### Adding users
+### Test users (created by script)
 
-1. Open http://localhost:5002
-2. Go to **Users** → **Add User**
+The `register-sdc-crm-clients.ps1` script automatically creates test users for each CRM role:
+
+| Login | Email | Role | Password |
+|-------|-------|------|----------|
+| `handlowiec` | handlowiec@test.local | Salesperson | `Test123!` |
+| `kierownik.sprzedazy` | kierownik.sprzedazy@test.local | SalesManager | `Test123!` |
+| `backoffice` | backoffice@test.local | BackofficeUser | `Test123!` |
+| `kierownik.backoffice` | kierownik.backoffice@test.local | BackofficeManager | `Test123!` |
+| `admin` | admin@test.local | Admin | `Test123!` |
+| `administrator` | (seeded) | Admin | `password` |
+
+To skip test user creation:
+```powershell
+./register-sdc-crm-clients.ps1 -SkipTestUsers
+```
+
+### Adding users manually
+
+1. Open http://localhost:5002/master/users
+2. Click **Add User**
 3. Set:
    - Login
    - Email
@@ -247,8 +265,8 @@ dotnet build -t:Run -f net10.0-android
 ### Roles and permissions
 
 The admin panel allows:
-- Creating user groups
-- Defining roles
+- Creating user groups: http://localhost:5002/master/groups
+- Defining roles/scopes: http://localhost:5002/master/scopes
 - Assigning permissions to scopes
 - Managing claims
 

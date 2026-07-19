@@ -10,6 +10,8 @@
       * public mobile client `sdc-crm-mobile` (Authorization Code + PKCE, is_public),
       * CRM role scopes: Salesperson, SalesManager, BackofficeUser, BackofficeManager, Admin,
       * one group per CRM role ("SDC CRM <Role>") with the matching role attached,
+      * test users for each CRM role (handlowiec, kierownik.sprzedazy, backoffice, 
+        kierownik.backoffice, admin) with default password,
       * assignment of the administrator user to the requested role group(s), so a fresh
         token immediately carries the `role` claim.
 
@@ -21,6 +23,7 @@
     ./register-sdc-crm-clients.ps1 -Authority http://localhost:5001 -Realm master
     ./register-sdc-crm-clients.ps1 -AdminUserLogin administrator -AdminUserRoles Admin,SalesManager
     ./register-sdc-crm-clients.ps1 -SkipUserAssignment
+    ./register-sdc-crm-clients.ps1 -SkipTestUsers
 #>
 
 param(
@@ -32,9 +35,11 @@ param(
     [string]$MobileRedirectUri = "com.sdc.crm.mobile://callback",
     [string]$AdminUserLogin = "administrator",
     [string[]]$AdminUserRoles = @("Admin"),
+    [string]$TestUserPassword = "Test123!",
     [switch]$SkipRoles,
     [switch]$SkipGroups,
-    [switch]$SkipUserAssignment
+    [switch]$SkipUserAssignment,
+    [switch]$SkipTestUsers
 )
 
 $ErrorActionPreference = "Stop"
@@ -50,6 +55,15 @@ $ClientType_Mobile = 3
 
 # CRM role names - must match the backend `CrmRoles` constants exactly.
 $CrmRoles = @("Salesperson", "SalesManager", "BackofficeUser", "BackofficeManager", "Admin")
+
+# Test users - one per CRM role for development/testing.
+$TestUsers = @(
+    @{ Login = "handlowiec";          Email = "handlowiec@test.local";          FirstName = "Jan";    LastName = "Handlowiec";       Role = "Salesperson" }
+    @{ Login = "kierownik.sprzedazy"; Email = "kierownik.sprzedazy@test.local"; FirstName = "Anna";   LastName = "Kierownik";        Role = "SalesManager" }
+    @{ Login = "backoffice";          Email = "backoffice@test.local";          FirstName = "Piotr";  LastName = "Backoffice";       Role = "BackofficeUser" }
+    @{ Login = "kierownik.backoffice";Email = "kierownik.backoffice@test.local";FirstName = "Maria";  LastName = "Kierownik-BO";     Role = "BackofficeManager" }
+    @{ Login = "admin";               Email = "admin@test.local";               FirstName = "Tomasz"; LastName = "Administrator";    Role = "Admin" }
+)
 
 function Write-Step($msg) { Write-Host "==> $msg" -ForegroundColor Cyan }
 function Write-Ok($msg) { Write-Host "    OK  $msg" -ForegroundColor Green }
@@ -398,6 +412,98 @@ elseif ($SkipUserAssignment) {
     Write-Skip "skipping user assignment (-SkipUserAssignment)"
 }
 
+# 9) Create test users for each CRM role -------------------------------------
+if (-not $SkipTestUsers -and -not $SkipGroups -and -not $SkipRoles) {
+    Write-Step "Creating test users for each CRM role (password: $TestUserPassword)"
+    foreach ($testUser in $TestUsers) {
+        $login = $testUser.Login
+        $email = $testUser.Email
+        $firstName = $testUser.FirstName
+        $lastName = $testUser.LastName
+        $role = $testUser.Role
+
+        $existingUser = Get-UserByLogin $login
+        if ($existingUser) {
+            Write-Skip "user '$login' already exists"
+            $userId = Get-EntityId $existingUser
+        }
+        else {
+            # Create user via SimpleIdServer API with password credential
+            try {
+                $newUser = Invoke-Sid -Method Post -Path "users" -Body @{
+                    id         = [guid]::NewGuid().ToString()
+                    name       = $login
+                    email      = $email
+                    firstname  = $firstName
+                    lastname   = $lastName
+                    email_verified = $true
+                    create_datetime = $now
+                    update_datetime = $now
+                    credentials = @(
+                        @{
+                            id              = [guid]::NewGuid().ToString()
+                            credential_type = "pwd"
+                            value           = $TestUserPassword
+                            is_active       = $true
+                        }
+                    )
+                }
+                Write-Ok "created user '$login' ($email) with password"
+                $userId = Get-EntityId $newUser
+            }
+            catch {
+                Write-Warn2 "could not create user '$login': $($_.Exception.Message)"
+                continue
+            }
+        }
+
+
+        # Assign user to role group
+        if ($userId) {
+            $groupName = Get-GroupNameForRole $role
+            $group = $roleGroups[$role]
+            if (-not $group) { $group = Get-GroupByName $groupName }
+            if (-not $group) {
+                Write-Warn2 "group '$groupName' not found - cannot assign user '$login'"
+                continue
+            }
+            $groupId = Get-EntityId $group
+
+            $fullUser = $null
+            try { $fullUser = Invoke-Sid -Method Get -Path "users/$userId" } catch { }
+            $alreadyMember = $false
+            if ($fullUser -and $fullUser.groups) {
+                foreach ($gu in $fullUser.groups) {
+                    if ($gu.group -and $gu.group.id -eq $groupId) { $alreadyMember = $true; break }
+                }
+            }
+            if ($alreadyMember) {
+                Write-Skip "user '$login' already in group '$groupName'"
+            }
+            else {
+                try {
+                    Invoke-Sid -Method Post -Path "users/$userId/groups/$groupId" | Out-Null
+                    Write-Ok "added user '$login' to group '$groupName' (role: $role)"
+                }
+                catch {
+                    Write-Warn2 "could not add user '$login' to group '$groupName': $($_.Exception.Message)"
+                }
+            }
+        }
+    }
+}
+elseif ($SkipTestUsers) {
+    Write-Skip "skipping test users creation (-SkipTestUsers)"
+}
+
 Write-Host ""
 Write-Host "Done. All SDC-CRM IAM objects are provisioned." -ForegroundColor Green
+Write-Host ""
+Write-Host "Test users created (password: $TestUserPassword):" -ForegroundColor Yellow
+Write-Host "  - handlowiec           (Salesperson)" -ForegroundColor Yellow
+Write-Host "  - kierownik.sprzedazy  (SalesManager)" -ForegroundColor Yellow
+Write-Host "  - backoffice           (BackofficeUser)" -ForegroundColor Yellow
+Write-Host "  - kierownik.backoffice (BackofficeManager)" -ForegroundColor Yellow
+Write-Host "  - admin                (Admin)" -ForegroundColor Yellow
+Write-Host ""
 Write-Host "Sign the user out/in so a fresh token carries the 'role' claim." -ForegroundColor Yellow

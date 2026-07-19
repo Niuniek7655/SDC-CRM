@@ -20,10 +20,13 @@ SDC.CRM.Domain         (Domain)        ->  (brak zależności)
 | Infrastructure | `src/SDC.CRM.Infrastructure` | EF Core, `DbContext`, repozytoria, rejestracja zależności. |
 | Api | `src/SDC.CRM.Api` | ASP.NET Core, kontrolery, kontrakty HTTP, composition root. |
 
-Testy:
+Testy (zgodnie z regułą 99: **TUnit** + **NSubstitute**):
 
-- `tests/SDC.CRM.Domain.Tests` — testy reguł biznesowych agregatów.
-- `tests/SDC.CRM.Application.Tests` — testy przypadków użycia (z atrapami).
+- `tests/SDC.CRM.Domain.Tests` — testy reguł biznesowych agregatów (prawdziwe obiekty domenowe).
+- `tests/SDC.CRM.Application.Tests` — testy przypadków użycia (porty zastąpione substytutami NSubstitute).
+- `tests/SDC.CRM.Api.Tests` — testy tożsamości/uwierzytelniania (`CurrentUser` mapujący claimy tokena na role i identyfikator domenowy).
+
+Konwencja nazw testów: `Metoda__When_scenariusz__Should_oczekiwany_rezultat`.
 
 ## Zasady warstw
 
@@ -67,11 +70,20 @@ W trybie Development dostępny jest dokument OpenAPI pod `/openapi/v1.json`.
 
 ## Baza danych
 
-Domyślnie używany jest **SQLite** (`crm.db`), tworzony automatycznie przy starcie
-przez `EnsureCreated()` (tylko na potrzeby developmentu).
+Używany jest **PostgreSQL** (dostawca `Npgsql.EntityFrameworkCore.PostgreSQL`).
+Lokalnie baza uruchamiana jest przez główny `docker-compose.yml` w katalogu repozytorium
+(usługa `postgres`: baza `appdb`, użytkownik/hasło `app`/`app`, port `5432`).
+
+```bash
+# z katalogu głównego repozytorium
+docker compose up -d postgres
+```
+
+Connection string konfigurowany jest w `appsettings*.json` pod kluczem `ConnectionStrings:Crm`.
+Schemat jest tworzony automatycznie przy starcie przez `EnsureCreated()` (tylko na potrzeby developmentu).
 
 > TODO (decyzja techniczna): przed produkcją zastąpić `EnsureCreated()` migracjami EF Core
-> oraz docelowym dostawcą bazy (np. SQL Server / PostgreSQL).
+> (`dotnet ef migrations add`) i uruchamiać je kontrolowanie zamiast tworzenia schematu w runtime.
 
 ## Przykładowe żądanie
 

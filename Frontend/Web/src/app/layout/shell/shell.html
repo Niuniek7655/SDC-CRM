@@ -2,8 +2,17 @@
   <header class="shell__header">
     <a class="shell__brand" routerLink="/">SDC CRM</a>
     <nav class="shell__nav">
-      <a routerLink="/leads" routerLinkActive="is-active">Leady</a>
+      @if (canSeeLeads()) {
+        <a routerLink="/leads" routerLinkActive="is-active">Leady</a>
+      }
     </nav>
+
+    <div class="shell__user">
+      @if (userName(); as name) {
+        <span class="shell__user-name">{{ name }}</span>
+      }
+      <button type="button" class="shell__logout" (click)="logout()">Wyloguj</button>
+    </div>
   </header>
 
   <main class="shell__content">

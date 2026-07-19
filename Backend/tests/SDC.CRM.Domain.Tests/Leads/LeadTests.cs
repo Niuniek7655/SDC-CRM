@@ -1,12 +1,11 @@
 using SDC.CRM.Domain.Common;
 using SDC.CRM.Domain.Leads;
-using Xunit;
 
 namespace SDC.CRM.Domain.Tests.Leads;
 
 public sealed class LeadTests
 {
-    private static Lead RegisterLead()
+    private static Lead RegisterSampleLead()
         => Lead.Register(
             companyName: "Acme Sp. z o.o.",
             contactName: "Jan Kowalski",
@@ -15,53 +14,53 @@ public sealed class LeadTests
             source: "Targi",
             assignedSalespersonId: Guid.NewGuid());
 
-    [Fact]
-    public void RegisterLead_ShouldStartInNewStatus()
+    [Test]
+    public async Task Register__When_lead_is_registered__Should_start_in_new_status_with_generated_id()
     {
-        var lead = RegisterLead();
+        var lead = RegisterSampleLead();
 
-        Assert.Equal(LeadStatus.New, lead.Status);
-        Assert.NotEqual(Guid.Empty, lead.Id);
+        await Assert.That(lead.Status).IsEqualTo(LeadStatus.New);
+        await Assert.That(lead.Id).IsNotEqualTo(Guid.Empty);
     }
 
-    [Fact]
-    public void RegisterLead_ShouldRequireCompanyName()
+    [Test]
+    public async Task Register__When_company_name_is_missing__Should_fail_validation()
     {
-        var exception = Assert.Throws<DomainException>(() => Lead.Register(
-            companyName: "   ",
-            contactName: "Jan Kowalski",
-            contactEmail: Email.Create("jan@acme.test"),
-            contactPhone: null,
-            source: null,
-            assignedSalespersonId: Guid.NewGuid()));
-
-        Assert.Contains("company name", exception.Message);
+        await Assert.That(() => Lead.Register(
+                companyName: "   ",
+                contactName: "Jan Kowalski",
+                contactEmail: Email.Create("jan@acme.test"),
+                contactPhone: null,
+                source: null,
+                assignedSalespersonId: Guid.NewGuid()))
+            .Throws<DomainException>()
+            .WithMessageContaining("company name");
     }
 
-    [Fact]
-    public void QualifyLead_ShouldFail_WhenLeadIsRejected()
+    [Test]
+    public async Task Qualify__When_lead_is_rejected__Should_fail()
     {
-        var lead = RegisterLead();
+        var lead = RegisterSampleLead();
         lead.Reject("Brak budżetu");
 
-        Assert.Throws<DomainException>(lead.Qualify);
+        await Assert.That(() => lead.Qualify()).Throws<DomainException>();
     }
 
-    [Fact]
-    public void RejectLead_ShouldRequireRejectionReason()
+    [Test]
+    public async Task Reject__When_rejection_reason_is_missing__Should_fail_validation()
     {
-        var lead = RegisterLead();
+        var lead = RegisterSampleLead();
 
-        Assert.Throws<DomainException>(() => lead.Reject("  "));
+        await Assert.That(() => lead.Reject("  ")).Throws<DomainException>();
     }
 
-    [Fact]
-    public void QualifyLead_ShouldSetQualifiedStatus()
+    [Test]
+    public async Task Qualify__When_lead_is_new__Should_set_qualified_status()
     {
-        var lead = RegisterLead();
+        var lead = RegisterSampleLead();
 
         lead.Qualify();
 
-        Assert.Equal(LeadStatus.Qualified, lead.Status);
+        await Assert.That(lead.Status).IsEqualTo(LeadStatus.Qualified);
     }
 }

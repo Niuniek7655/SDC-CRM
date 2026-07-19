@@ -10,14 +10,16 @@ export interface LeadSummary {
   createdAtUtc: string;
 }
 
-/** Payload for registering a new lead (matches the backend API contract). */
+/**
+ * Payload for registering a new lead (matches the backend API contract).
+ * The owning salesperson is derived server-side from the authenticated user.
+ */
 export interface RegisterLeadRequest {
   companyName: string;
   contactName: string;
   contactEmail: string;
   contactPhone: string | null;
   source: string | null;
-  assignedSalespersonId: string;
 }
 
 export interface RegisterLeadResponse {

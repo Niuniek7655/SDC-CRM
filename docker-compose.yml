@@ -1,0 +1,177 @@
+name: dotnet-local-infra
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: dotnet-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
+      POSTGRES_DB: appdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d appdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - dotnet-local-network
+
+  rabbitmq:
+    image: rabbitmq:4-management-alpine
+    container_name: dotnet-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: app
+      RABBITMQ_DEFAULT_PASS: app
+    ports:
+      - "5672:5672"     # AMQP
+      - "15672:15672"   # Management UI
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - dotnet-local-network
+
+  redis:
+    image: redis:8-alpine
+    container_name: dotnet-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - dotnet-local-network
+
+  seq:
+    image: datalust/seq:latest
+    container_name: dotnet-seq
+    restart: unless-stopped
+    environment:
+      ACCEPT_EULA: "Y"
+    ports:
+      - "5341:80"
+    volumes:
+      - seq-data:/data
+    networks:
+      - dotnet-local-network
+
+  loki:
+    image: grafana/loki:latest
+    container_name: dotnet-loki
+    restart: unless-stopped
+    command: ["-config.file=/etc/loki/loki-config.yaml"]
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./infra/observability/loki-config.yaml:/etc/loki/loki-config.yaml:ro
+      - loki-data:/loki
+    networks:
+      - dotnet-local-network
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: dotnet-prometheus
+    restart: unless-stopped
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.enable-lifecycle"
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./infra/observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    networks:
+      - dotnet-local-network
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: dotnet-grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      - prometheus
+      - loki
+      - tempo
+      - jaeger
+    networks:
+      - dotnet-local-network
+
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: dotnet-jaeger
+    restart: unless-stopped
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "16686:16686"   # Jaeger UI
+    networks:
+      - dotnet-local-network
+
+  tempo:
+    image: grafana/tempo:latest
+    container_name: dotnet-tempo
+    restart: unless-stopped
+    command: ["-config.file=/etc/tempo/tempo.yaml"]
+    ports:
+      - "3200:3200"     # Tempo HTTP API
+    volumes:
+      - ./infra/observability/tempo-config.yaml:/etc/tempo/tempo.yaml:ro
+      - tempo-data:/tmp/tempo
+    networks:
+      - dotnet-local-network
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    container_name: dotnet-otel-collector
+    restart: unless-stopped
+    command: ["--config=/etc/otelcol-contrib/otel-collector-config.yaml"]
+    ports:
+      - "4317:4317"     # OTLP gRPC
+      - "4318:4318"     # OTLP HTTP
+      - "9464:9464"     # Prometheus scrape endpoint exposed by Collector
+    volumes:
+      - ./infra/observability/otel-collector-config.yaml:/etc/otelcol-contrib/otel-collector-config.yaml:ro
+    depends_on:
+      - jaeger
+      - tempo
+      - loki
+    networks:
+      - dotnet-local-network
+
+volumes:
+  postgres-data:
+  rabbitmq-data:
+  redis-data:
+  seq-data:
+  loki-data:
+  prometheus-data:
+  grafana-data:
+  tempo-data:
+
+networks:
+  dotnet-local-network:
+    driver: bridge

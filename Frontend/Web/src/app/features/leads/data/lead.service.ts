@@ -18,9 +18,7 @@ export class LeadService {
     return this.http.post<RegisterLeadResponse>(this.baseUrl, request);
   }
 
-  getMyLeads(salespersonId: string): Observable<LeadSummary[]> {
-    return this.http.get<LeadSummary[]>(`${this.baseUrl}/mine`, {
-      params: { salespersonId },
-    });
+  getMyLeads(): Observable<LeadSummary[]> {
+    return this.http.get<LeadSummary[]>(`${this.baseUrl}/mine`);
   }
 }

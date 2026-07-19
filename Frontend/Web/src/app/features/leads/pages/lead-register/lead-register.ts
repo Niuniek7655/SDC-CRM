@@ -44,8 +44,6 @@ export class LeadRegister {
       contactEmail: value.contactEmail,
       contactPhone: value.contactPhone.trim() || null,
       source: value.source.trim() || null,
-      // TODO: replace with the authenticated salesperson id once auth is added.
-      assignedSalespersonId: '00000000-0000-0000-0000-000000000001',
     };
 
     this.leadService.registerLead(request).subscribe({

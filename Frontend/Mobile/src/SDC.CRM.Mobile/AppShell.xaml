@@ -4,11 +4,20 @@
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     xmlns:local="clr-namespace:SDC.CRM.Mobile"
+    xmlns:views="clr-namespace:SDC.CRM.Mobile.Presentation.Views"
+    FlyoutBehavior="Disabled"
     Title="SDC.CRM.Mobile">
 
     <ShellContent
+        Title="Logowanie"
+        Route="login"
+        Shell.TabBarIsVisible="False"
+        ContentTemplate="{DataTemplate views:LoginPage}" />
+
+    <ShellContent
         Title="Home"
-        ContentTemplate="{DataTemplate local:MainPage}"
-        Route="MainPage" />
+        Route="main"
+        Shell.TabBarIsVisible="False"
+        ContentTemplate="{DataTemplate local:MainPage}" />
 
 </Shell>

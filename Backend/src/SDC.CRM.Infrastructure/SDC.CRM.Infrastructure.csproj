@@ -3,13 +3,21 @@
   <!-- Infrastructure layer: persistence and external concerns. Depends on Application + Domain. -->
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.0" />
-    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.0" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.0">
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.12" />
+    <!-- Npgsql 10.0.3 only requires Relational >= 10.0.4; align it with EF Core to avoid mixed versions (MSB3277). -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.12" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.12" />
+    <!--
+      EF Core Design (design-time only) pulls System.Security.Cryptography.Xml 9.0.0 through MSBuild,
+      which has known high-severity advisories. Override it with a patched version; PrivateAssets keeps
+      it out of the dependency graph of consuming projects.
+    -->
+    <PackageReference Include="System.Security.Cryptography.Xml" Version="10.0.12" PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup>

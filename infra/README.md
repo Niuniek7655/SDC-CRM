@@ -39,16 +39,19 @@ docker compose down -v
 
 ## Local URLs
 
+Credentials below are local development defaults. Override them by copying `.env.example`
+(repository root) to `.env` - the file is git-ignored and every variable is optional.
+
 | Component | URL / Port | Credentials |
 |---|---:|---|
-| PostgreSQL | localhost:5432 | app / app |
-| RabbitMQ AMQP | localhost:5672 | app / app |
+| PostgreSQL | localhost:5432 | app / app (`POSTGRES_USER` / `POSTGRES_PASSWORD`) |
+| RabbitMQ AMQP | localhost:5672 | app / app (`RABBITMQ_DEFAULT_USER` / `RABBITMQ_DEFAULT_PASS`) |
 | RabbitMQ UI | http://localhost:15672 | app / app |
 | Redis | localhost:6379 | - |
 | Seq | http://localhost:5341 | - |
 | Loki | http://localhost:3100 | - |
 | Prometheus | http://localhost:9090 | - |
-| Grafana | http://localhost:3000 | admin / admin |
+| Grafana | http://localhost:3000 | admin / admin (`GRAFANA_ADMIN_USER` / `GRAFANA_ADMIN_PASSWORD`) |
 | Jaeger UI | http://localhost:16686 | - |
 | Tempo API | http://localhost:3200 | - |
 | OpenTelemetry gRPC | localhost:4317 | - |
@@ -56,10 +59,14 @@ docker compose down -v
 
 ## Example .NET appsettings.Development.json
 
+The API reads its database connection from `ConnectionStrings:Crm`
+(see `Backend/src/SDC.CRM.Api/appsettings.Development.json`). The remaining entries are examples
+for future integrations (RabbitMQ, Redis).
+
 ```json
 {
   "ConnectionStrings": {
-    "Postgres": "Host=localhost;Port=5432;Database=appdb;Username=app;Password=app",
+    "Crm": "Host=localhost;Port=5432;Database=appdb;Username=app;Password=app",
     "Redis": "localhost:6379"
   },
   "RabbitMq": {
@@ -67,13 +74,6 @@ docker compose down -v
     "Port": 5672,
     "Username": "app",
     "Password": "app"
-  },
-  "Seq": {
-    "ServerUrl": "http://localhost:5341"
-  },
-  "OpenTelemetry": {
-    "OtlpGrpcEndpoint": "http://localhost:4317",
-    "OtlpHttpEndpoint": "http://localhost:4318"
   }
 }
 ```

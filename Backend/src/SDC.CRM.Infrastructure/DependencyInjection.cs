@@ -9,10 +9,20 @@ namespace SDC.CRM.Infrastructure;
 
 public static class DependencyInjection
 {
+    private const string CrmConnectionStringName = "Crm";
+
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
-        var connectionString = configuration.GetConnectionString("Crm")
-            ?? "Host=localhost;Port=5432;Database=appdb;Username=app;Password=app";
+        // No fallback on purpose: a missing connection string must stop the application
+        // instead of silently pointing it at a local development database.
+        var connectionString = configuration.GetConnectionString(CrmConnectionStringName);
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            throw new InvalidOperationException(
+                $"Connection string '{CrmConnectionStringName}' is not configured. " +
+                $"Set 'ConnectionStrings:{CrmConnectionStringName}' in appsettings.Development.json for local development " +
+                $"or the environment variable 'ConnectionStrings__{CrmConnectionStringName}' in other environments.");
+        }
 
         services.AddDbContext<CrmDbContext>(options => options.UseNpgsql(connectionString));
 

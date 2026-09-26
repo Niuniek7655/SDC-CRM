@@ -19,6 +19,15 @@ public static class AuthenticationExtensions
         var options = configuration.GetSection(OidcOptions.SectionName).Get<OidcOptions>()
                       ?? new OidcOptions();
 
+        // Fail fast: without an authority every request would be rejected with 401,
+        // which hides the real cause (missing environment configuration).
+        if (string.IsNullOrWhiteSpace(options.Authority))
+        {
+            throw new InvalidOperationException(
+                $"OIDC authority is not configured. Set '{OidcOptions.SectionName}:Authority' in appsettings.Development.json " +
+                $"for local development or the environment variable '{OidcOptions.SectionName}__Authority' in other environments.");
+        }
+
         services.AddSingleton(options);
 
         services

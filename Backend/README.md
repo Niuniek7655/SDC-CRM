@@ -72,18 +72,38 @@ W trybie Development dostępny jest dokument OpenAPI pod `/openapi/v1.json`.
 
 Używany jest **PostgreSQL** (dostawca `Npgsql.EntityFrameworkCore.PostgreSQL`).
 Lokalnie baza uruchamiana jest przez główny `docker-compose.yml` w katalogu repozytorium
-(usługa `postgres`: baza `appdb`, użytkownik/hasło `app`/`app`, port `5432`).
+(usługa `postgres`: domyślnie baza `appdb`, użytkownik/hasło `app`/`app`, port `5432`).
+Domyślne wartości można nadpisać w pliku `.env` w katalogu głównym (wzór: `.env.example`).
 
 ```bash
 # z katalogu głównego repozytorium
 docker compose up -d postgres
 ```
 
-Connection string konfigurowany jest w `appsettings*.json` pod kluczem `ConnectionStrings:Crm`.
+Connection string konfigurowany jest pod kluczem `ConnectionStrings:Crm`
+(wartość deweloperska w `appsettings.Development.json`, patrz [Konfiguracja środowisk](#konfiguracja-środowisk)).
 Schemat jest tworzony automatycznie przy starcie przez `EnsureCreated()` (tylko na potrzeby developmentu).
 
 > TODO (decyzja techniczna): przed produkcją zastąpić `EnsureCreated()` migracjami EF Core
 > (`dotnet ef migrations add`) i uruchamiać je kontrolowanie zamiast tworzenia schematu w runtime.
+
+## Konfiguracja środowisk
+
+`appsettings.json` zawiera wyłącznie ustawienia niezależne od środowiska i nie ujawnia
+connection stringa ani adresu dostawcy tożsamości. Wartości do lokalnego developmentu i debugowania
+są w `appsettings.Development.json` (profil `http`/`https` w `launchSettings.json` ustawia
+`ASPNETCORE_ENVIRONMENT=Development`). W pozostałych środowiskach ustawienia przekazuje się zmiennymi
+środowiskowymi (lub magazynem sekretów platformy):
+
+| Ustawienie | Development (`appsettings.Development.json`) | Inne środowiska (zmienna środowiskowa) |
+| --- | --- | --- |
+| `ConnectionStrings:Crm` | `Host=localhost;Port=5432;Database=appdb;...` | `ConnectionStrings__Crm` |
+| `Oidc:Authority` | `http://localhost:5001/master` | `Oidc__Authority` |
+| `Oidc:RequireHttpsMetadata` | `false` | domyślnie `true` |
+| `Oidc:AllowedCorsOrigins` | `http://localhost:4200` | `Oidc__AllowedCorsOrigins__0`, `__1`, ... |
+
+Brak `ConnectionStrings:Crm` lub `Oidc:Authority` zatrzymuje start aplikacji z komunikatem
+wskazującym brakujące ustawienie (fail-fast zamiast cichego użycia wartości deweloperskich).
 
 ## Przykładowe żądanie
 

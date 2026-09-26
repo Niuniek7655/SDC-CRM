@@ -55,6 +55,14 @@ docker compose ps
 
 > **Note:** Make sure Docker Desktop is running before executing the above commands.
 
+### Configuration (optional `.env`)
+
+`docker-compose.yml` works out of the box with local development defaults (ports `5001`/`5002`/`5433`,
+database user `idserver`, image version `6.0.4`). To change them, copy `.env.example` to `.env`
+in this directory (the file is git-ignored) and edit the values. PostgreSQL applies the database
+credentials only when its volume is created, so run `docker compose down -v` after changing them.
+Never reuse these development values in a production identity provider.
+
 ### 2. Wait for initialization
 
 On first start, IdServer will automatically:
@@ -151,7 +159,8 @@ All clients request scopes: `openid profile email role offline_access sdc-crm-ap
 
 ### API configuration (already committed)
 
-`Backend/src/SDC.CRM.Api/appsettings*.json`:
+`Backend/src/SDC.CRM.Api/appsettings.Development.json` (other environments provide the same keys
+through environment variables, e.g. `Oidc__Authority`):
 
 ```json
 {
@@ -289,6 +298,9 @@ The admin panel allows:
 ## 🐘 PostgreSQL Database Access
 
 ### Connection String
+
+Default development values (see `.env.example`):
+
 ```
 Host=localhost;Port=5433;Database=IdServer;Username=idserver;Password=SsoSecurePassword123!
 ```
@@ -407,9 +419,9 @@ docker compose up -d
 
 ## ✅ First Run Checklist
 
+- [ ] (Optional) Copy `.env.example` to `.env` to change ports or credentials
 - [ ] Run `docker compose up -d`
 - [ ] Wait 30-60 seconds for initialization
-- [ ] Check http://localhost:5001/.well-known/openid-configuration
-- [ ] Log in to admin panel http://localhost:5002
-- [ ] Create a new OAuth client for SDC-CRM application
-- [ ] Configure SDC-CRM application with OAuth client data
+- [ ] Check http://localhost:5001/master/.well-known/openid-configuration
+- [ ] Run `./register-sdc-crm-clients.ps1` (API scope, `sdc-crm-web` and `sdc-crm-mobile` clients, roles, groups, test users)
+- [ ] Log in to the admin panel http://localhost:5002/master/clients to verify the clients

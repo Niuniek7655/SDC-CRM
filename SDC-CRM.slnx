@@ -1,6 +1,6 @@
 <Solution>
   <Folder Name="/Integrations/Sso/">
-    <File Path="Integrations/Sso/.env" />
+    <File Path="Integrations/Sso/.env.example" />
     <File Path="Integrations/Sso/.gitignore" />
     <File Path="Integrations/Sso/docker-compose.yml" />
     <File Path="Integrations/Sso/manage-sso.ps1" />
@@ -8,6 +8,7 @@
     <File Path="Integrations/Sso/register-sdc-crm-clients.ps1" />
   </Folder>
   <Folder Name="/Solution Items/">
+    <File Path=".env.example" />
     <File Path=".gitignore" />
     <File Path="docker-compose.yml" />
     <File Path="global.json" />

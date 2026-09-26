@@ -3,12 +3,15 @@
 # This solution is fully self-contained - all Docker images
 # are pulled from public Docker Hub (does not require access to other repositories).
 #
+# Local development only. All values fall back to development defaults; override them
+# by copying .env.example to .env (git-ignored) in this directory.
+#
 # Usage:
 #   docker compose up -d      # Start
 #   docker compose down       # Stop
 #   docker compose down -v    # Stop and delete data
 #
-# Access:
+# Access (default ports):
 #   Identity Server: http://localhost:5001/master
 #   Admin Panel:     http://localhost:5002/master/clients (or /users, /groups, /scopes)
 #   Login:           administrator / password
@@ -22,15 +25,15 @@ services:
     container_name: sso-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: idserver
-      POSTGRES_PASSWORD: SsoSecurePassword123!
-      POSTGRES_DB: IdServer
+      POSTGRES_USER: ${POSTGRES_USER:-idserver}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-SsoSecurePassword123!}
+      POSTGRES_DB: ${POSTGRES_DB:-IdServer}
     ports:
-      - "5433:5432"
+      - "${POSTGRES_PORT:-5433}:5432"
     volumes:
       - sso-postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U idserver -d IdServer"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -39,7 +42,7 @@ services:
 
   # Identity Server - main OAuth2/OpenID Connect authorization server
   idserver:
-    image: simpleidserver/idserver:6.0.4
+    image: simpleidserver/idserver:${SID_VERSION:-6.0.4}
     container_name: sso-idserver
     restart: unless-stopped
     environment:
@@ -47,16 +50,16 @@ services:
       ASPNETCORE_FORWARDEDHEADERS_ENABLED: "true"
       # Storage configuration - PostgreSQL
       StorageConfiguration__Type: "POSTGRE"
-      StorageConfiguration__ConnectionString: "Host=sso-postgres;Port=5432;Database=IdServer;Username=idserver;Password=SsoSecurePassword123!"
+      StorageConfiguration__ConnectionString: "Host=sso-postgres;Port=5432;Database=${POSTGRES_DB:-IdServer};Username=${POSTGRES_USER:-idserver};Password=${POSTGRES_PASSWORD:-SsoSecurePassword123!}"
       # Cache configuration - PostgreSQL
       DistributedCacheConfiguration__Type: "POSTGRE"
-      DistributedCacheConfiguration__ConnectionString: "Host=sso-postgres;Port=5432;Database=IdServer;Username=idserver;Password=SsoSecurePassword123!"
+      DistributedCacheConfiguration__ConnectionString: "Host=sso-postgres;Port=5432;Database=${POSTGRES_DB:-IdServer};Username=${POSTGRES_USER:-idserver};Password=${POSTGRES_PASSWORD:-SsoSecurePassword123!}"
       # Message Broker - InMemory (for development)
       MessageBrokerOptions__Transport: "INMEMORY"
       # Admin panel URL
-      AdminUiUrl: "http://localhost:5002"
+      AdminUiUrl: "http://localhost:${WEBSITE_PORT:-5002}"
     ports:
-      - "5001:80"
+      - "${IDSERVER_PORT:-5001}:80"
     depends_on:
       sso-postgres:
         condition: service_healthy
@@ -65,7 +68,7 @@ services:
 
   # Identity Server Website - administration panel
   idserverwebsite:
-    image: simpleidserver/website:6.0.4
+    image: simpleidserver/website:${SID_VERSION:-6.0.4}
     container_name: sso-website
     restart: unless-stopped
     # Map localhost to host - allows container to connect to localhost:5001
@@ -74,12 +77,12 @@ services:
     environment:
       ASPNETCORE_URLS: "http://*:80"
       ASPNETCORE_FORWARDEDHEADERS_ENABLED: "true"
-      # IdserverBaseUrl - using localhost:5001 which works both from container (via extra_hosts)
+      # IdserverBaseUrl - using localhost:<IDSERVER_PORT> which works both from container (via extra_hosts)
       # and from user's browser
-      IdserverBaseUrl: "http://localhost:5001"
-      # OAuth client for Website (default in IdServer)
+      IdserverBaseUrl: "http://localhost:${IDSERVER_PORT:-5001}"
+      # OAuth client for Website (seeded by default in IdServer)
       ClientId: "SIDS-manager"
-      ClientSecret: "password"
+      ClientSecret: "${SIDS_MANAGER_CLIENT_SECRET:-password}"
       Scopes__0: "openid"
       Scopes__1: "profile"
       Scopes__2: "role"
@@ -88,7 +91,7 @@ services:
       ForceHttps: "false"
       IgnoreCertificateError: "true"
     ports:
-      - "5002:80"
+      - "${WEBSITE_PORT:-5002}:80"
     depends_on:
       - idserver
     networks:

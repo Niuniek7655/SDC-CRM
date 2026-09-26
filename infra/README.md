@@ -6,14 +6,31 @@ This directory contains local development infrastructure configuration for the S
 
 - **PostgreSQL** — primary database
 - **RabbitMQ** — message broker (for future use, initially in-memory broker is used)
-- **Redis** — caching
-- **Seq** — structured log viewer (most convenient for local development)
+- **Redis** — caching (for future use)
+- **Seq** — structured log and trace viewer (most convenient for local development)
 - **Loki** — log aggregation (Grafana-based stack)
 - **Prometheus** — metrics collection
 - **Grafana** — dashboards and visualization
-- **Jaeger** — distributed tracing UI
-- **Tempo** — trace backend
+- **Jaeger** (v2) — distributed tracing UI
+- **Tempo** — trace backend (Grafana-based stack)
 - **OpenTelemetry Collector** — telemetry collection and routing
+
+## Telemetry flow
+
+Applications send all signals over OTLP to the OpenTelemetry Collector (`localhost:4317` gRPC or
+`localhost:4318` HTTP). The collector (`observability/otel-collector-config.yaml`) fans them out:
+
+| Signal | Destinations | Where to look |
+|---|---|---|
+| Traces | Jaeger, Tempo, Seq | Jaeger UI, Grafana (Tempo), Seq |
+| Logs | Loki, Seq | Grafana (Loki), Seq |
+| Metrics | Prometheus (scrapes the collector on `:9464`) | Prometheus, Grafana |
+
+## Image versions
+
+All observability images are pinned to explicit versions. `:latest` moved silently to new major
+versions (e.g. Tempo 3.x) whose configuration format differs from the files in `observability/`.
+To upgrade, bump the tag in `docker-compose.yml`, read the release notes and adjust the configuration.
 
 ## Usage
 
@@ -96,7 +113,8 @@ infra/
 ## Notes
 
 - Grafana datasources are provisioned automatically from `grafana/provisioning/datasources/datasources.yaml`.
-- Send application telemetry to the **OpenTelemetry Collector**, not directly to Jaeger, Tempo, Loki, or Prometheus.
-- For local development, **Seq** is usually the most convenient log viewer. Loki is included for a Grafana-based observability stack.
+- Send application telemetry to the **OpenTelemetry Collector**, not directly to Jaeger, Tempo, Loki, Seq or Prometheus.
+- For local development, **Seq** is usually the most convenient log viewer (it also shows traces). Loki and Tempo are included for a Grafana-based observability stack.
+- Seq runs without authentication (`SEQ_FIRSTRUN_NOAUTHENTICATION`) - local development only.
 - The `docker-compose.yml` file is located in the repository root.
 

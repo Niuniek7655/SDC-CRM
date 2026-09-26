@@ -29,6 +29,11 @@ exporters:
   otlphttp/loki:
     endpoint: http://loki:3100/otlp
 
+  # Seq ingests OTLP over HTTP on its ingestion port (5341 inside the container);
+  # the exporter appends /v1/logs and /v1/traces to this base path.
+  otlphttp/seq:
+    endpoint: http://seq:5341/ingest/otlp
+
 service:
   pipelines:
     traces:
@@ -39,6 +44,7 @@ service:
       exporters:
         - otlp/jaeger
         - otlp/tempo
+        - otlphttp/seq
         - debug
 
     metrics:
@@ -57,4 +63,5 @@ service:
         - batch
       exporters:
         - otlphttp/loki
+        - otlphttp/seq
         - debug

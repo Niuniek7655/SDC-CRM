@@ -24,9 +24,12 @@ Testy (zgodnie z regułą 99: **TUnit** + **NSubstitute**):
 
 - `tests/SDC.CRM.Domain.Tests` — testy reguł biznesowych agregatów (prawdziwe obiekty domenowe).
 - `tests/SDC.CRM.Application.Tests` — testy przypadków użycia (porty zastąpione substytutami NSubstitute).
-- `tests/SDC.CRM.Api.Tests` — testy tożsamości/uwierzytelniania (`CurrentUser` mapujący claimy tokena na role i identyfikator domenowy).
+- `tests/SDC.CRM.Api.Tests` — testy jednostkowe warstwy API: `CurrentUser` (claimy tokena → role i identyfikator domenowy),
+  walidacja konfiguracji przy starcie (fail-fast) i `CorrelationIdMiddleware`.
+- `tests/SDC.CRM.Api.IntegrationTests` — testy integracyjne HTTP: prawdziwy pipeline API uruchomiony w pamięci (TestServer).
 
 Konwencja nazw testów: `Metoda__When_scenariusz__Should_oczekiwany_rezultat`.
+Opis działania testów API: [Jak działają testy API](#jak-działają-testy-api).
 
 ## Zasady warstw
 
@@ -152,6 +155,58 @@ API wysyła ślady (traces), metryki i logi przez OTLP do OpenTelemetry Collecto
   trace-id bieżącego śladu W3C, więc nagłówek, logi i ślad mają ten sam identyfikator. Identyfikator wraca w odpowiedzi
   (także dla klientów przeglądarkowych przez CORS), trafia do scope logów (`CorrelationId`) i jako tag `correlation.id` do śladu.
 - Podgląd lokalnie: Seq `http://localhost:5341`, Jaeger `http://localhost:16686`, Grafana `http://localhost:3000`.
+
+## Jak działają testy API
+
+Uruchomienie: `dotnet test --solution Backend/SDC.CRM.Backend.slnf` (wszystkie projekty) albo
+`dotnet test --project Backend/tests/<Projekt>/<Projekt>.csproj`. Żaden test nie wymaga bazy danych, SSO ani sieci.
+
+### Testy jednostkowe (`SDC.CRM.Api.Tests`)
+
+- **`Configuration/ConfigurationValidationTests`** - buduje `ServiceCollection` z konfiguracją w pamięci
+  (`AddInMemoryCollection`) i wywołuje `AddInfrastructure` oraz `AddCrmAuthentication`. Bez `ConnectionStrings:Crm`
+  lub `Oidc:Authority` oczekuje `InvalidOperationException`, której komunikat wskazuje zmienną środowiskową
+  (`ConnectionStrings__Crm`, `Oidc__Authority`); z ustawieniem sprawdza rejestrację `CrmDbContext` i `OidcOptions`.
+  Rejestracja usług niczego nie łączy - test działa bez PostgreSQL i bez dostawcy tożsamości.
+- **`Observability/CorrelationIdMiddlewareTests`** - wywołuje middleware bezpośrednio na `DefaultHttpContext`
+  (bez serwera HTTP), z `next` jako lambdą. Sprawdza, że:
+  - poprawny `X-Correlation-ID` klienta wraca bez zmian w odpowiedzi,
+  - przy braku nagłówka identyfikator jest generowany, a gdy trwa żądanie (`Activity` w formacie W3C) - jest to jego trace-id,
+  - wartości niebezpieczne (CR/LF - próba wstrzyknięcia nagłówka, same spacje, HTML, ponad 64 znaki) są zastępowane
+    nowym identyfikatorem - jeden test sparametryzowany atrybutami `[Arguments]`,
+  - identyfikator jest dostępny dla dalszej części pipeline'u (`CorrelationIdMiddleware.GetCorrelationId`),
+  - bieżąca aktywność dostaje tag `correlation.id`,
+  - otwierany jest scope logów z kluczem `CorrelationId` - `ILogger` jest substytutem NSubstitute i weryfikowane jest
+    wywołanie `BeginScope`, bo to właśnie ono dołącza identyfikator do każdego wpisu logu żądania.
+- **`Identity/CurrentUserTests`** (istniejące) - mapowanie claimów tokena na identyfikator domenowy i role.
+
+### Testy integracyjne (`SDC.CRM.Api.IntegrationTests`)
+
+`Infrastructure/CrmApiFactory` (`WebApplicationFactory<Program>`) uruchamia prawdziwe API w pamięci (TestServer):
+ten sam `Program.cs`, routing, middleware, polityki autoryzacji i serializacja JSON. Różnice względem produkcji:
+
+1. Środowisko `Testing` oraz zastępcze `ConnectionStrings:Crm` i `Oidc:Authority` - wymagane przez walidację
+   fail-fast, ale nigdy nieużywane.
+2. Schemat uwierzytelniania `Test` (`Infrastructure/TestAuthenticationHandler`) zamiast walidacji JWT. Żądanie jest
+   uwierzytelnione, gdy ma nagłówek `X-Test-Subject`; `X-Test-Roles` podaje role (np. `Salesperson`). Handler tworzy
+   claimy `sub`, `role` i `name` - takie jak w tokenach SimpleIdServer - więc `CurrentUser` i polityki `CrmPolicies`
+   działają dokładnie jak w produkcji. Brak nagłówka oznacza brak poświadczeń, czyli odpowiedź 401.
+3. `ILeadRepository` i `IUnitOfWork` są zastąpione substytutami NSubstitute - brak bazy danych; test może sprawdzić,
+   czy i z jakim agregatem nastąpił zapis.
+
+Każdy test tworzy własną fabrykę (`await using var factory = new CrmApiFactory()`), więc substytuty nie są
+współdzielone i testy mogą biec równolegle. `Leads/LeadsEndpointsTests` sprawdza:
+
+| Test | Scenariusz | Oczekiwany wynik |
+| --- | --- | --- |
+| `RegisterLead__When_request_has_no_credentials__...` | `POST /api/leads` bez poświadczeń | 401, repozytorium nie zostało wywołane |
+| `RegisterLead__When_user_has_no_sales_role__...` | rola `BackofficeUser` | 403, brak zapisu |
+| `RegisterLead__When_salesperson_sends_valid_lead__...` | rola `Salesperson` | 201, `id` w treści; lead przypisany do handlowca z tokena (nie z żądania), `SaveChanges` wywołane raz |
+| `RegisterLead__When_business_rule_is_violated__...` | pusta nazwa firmy | 400 `ProblemDetails` z opisem reguły, brak `SaveChanges` |
+| `GetMyLeads__When_request_has_no_credentials__...` | `GET /api/leads/mine` bez poświadczeń | 401 |
+| `GetMyLeads__When_user_has_no_sales_role__...` | rola `BackofficeManager` | 403 |
+| `GetMyLeads__When_salesperson_requests_leads__...` | handlowiec z jednym leadem | 200, lista z leadem wywołującego (repozytorium pytane o jego id) |
+| `AnyEndpoint__When_request_carries_correlation_id__...` | nagłówek `X-Correlation-ID` | ten sam identyfikator w odpowiedzi |
 
 ## Przykładowe żądanie
 

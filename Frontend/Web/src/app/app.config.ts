@@ -12,12 +12,8 @@ import { OAuthStorage, provideOAuthClient } from 'angular-oauth2-oidc';
 import { routes } from './app.routes';
 import { authInterceptor } from './core/auth/auth.interceptor';
 import { AuthService } from './core/auth/auth.service';
+import { oauthStorageFactory } from './core/auth/oauth-storage';
 import { errorInterceptor } from './core/interceptors/error-interceptor';
-
-// Persist tokens in localStorage so the session survives full page reloads.
-function storageFactory(): OAuthStorage {
-  return localStorage;
-}
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -26,7 +22,7 @@ export const appConfig: ApplicationConfig = {
     provideRouter(routes, withComponentInputBinding()),
     provideHttpClient(withFetch(), withInterceptors([authInterceptor, errorInterceptor])),
     provideOAuthClient(),
-    { provide: OAuthStorage, useFactory: storageFactory },
+    { provide: OAuthStorage, useFactory: oauthStorageFactory },
     provideAppInitializer(() => inject(AuthService).init()),
   ],
 };

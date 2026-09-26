@@ -68,6 +68,9 @@ Logowanie realizuje SimpleIdServer (Authorization Code + PKCE) przez bibliotekę
 - `core/auth/auth.service.ts` — cykl logowania/wylogowania, sygnały tożsamości i ról,
 - `core/auth/auth.interceptor.ts` — dołącza token `Bearer` do żądań `/api`,
 - `core/auth/auth.guard.ts` — chroni trasy i wymusza role (`data: { roles: [...] }`),
+- `core/auth/oauth-storage.ts` — tokeny (access/refresh), weryfikator PKCE i nonce trzymane są w `sessionStorage`:
+  sesja przetrwa odświeżenie strony, ale nie jest współdzielona między kartami i znika po zamknięciu karty
+  (mniejsza ekspozycja niż `localStorage`); nowa karta loguje się ponownie przez SSO, zwykle bez podawania hasła,
 - konfiguracja klienta w `src/environments/environment*.ts` (`sso`).
 
 Klient SPA `sdc-crm-web` musi być zarejestrowany w SSO (patrz

@@ -48,6 +48,25 @@ public sealed class CrmApiClientTests
     }
 
     [Test]
+    public async Task GetMyLeadsAsync__When_api_returns_403__Should_throw_forbidden_exception_not_unauthorized()
+    {
+        var handler = StubHttpMessageHandler.Returning(HttpStatusCode.Forbidden);
+
+        // 403 means "signed in, but the role is not allowed" - the session itself is still valid.
+        await Assert.That(async () => await ClientFor(handler).GetMyLeadsAsync())
+            .ThrowsExactly<CrmForbiddenException>();
+    }
+
+    [Test]
+    public async Task RegisterLeadAsync__When_api_returns_403__Should_throw_forbidden_exception()
+    {
+        var handler = StubHttpMessageHandler.Returning(HttpStatusCode.Forbidden);
+
+        await Assert.That(async () => await ClientFor(handler).RegisterLeadAsync(ValidRequest()))
+            .ThrowsExactly<CrmForbiddenException>();
+    }
+
+    [Test]
     public async Task RegisterLeadAsync__When_api_creates_lead__Should_post_request_and_return_new_id()
     {
         var handler = StubHttpMessageHandler.Returning(HttpStatusCode.Created, """{ "id": "3f0c2f1e-8a47-4d3b-9a4b-2f6d9c1e5a77" }""");

@@ -16,16 +16,20 @@ namespace SDC.CRM.Mobile.Presentation.ViewModels;
 /// </summary>
 public partial class MainPageViewModel : BaseViewModel
 {
+    private const string DefaultWelcomeMessage = "Witaj w SDC CRM Mobile!";
+
     private readonly IConnectivityService _connectivityService;
     private readonly IAuthService _authService;
     private readonly ICrmApiClient _apiClient;
     private readonly INavigationService _navigation;
 
-    [ObservableProperty]
-    private string _welcomeMessage = "Witaj w SDC CRM Mobile!";
+    private bool _isFollowingConnectivity;
 
     [ObservableProperty]
-    private bool _isOnline;
+    public partial string WelcomeMessage { get; set; }
+
+    [ObservableProperty]
+    public partial bool IsOnline { get; set; }
 
     public ObservableCollection<LeadSummaryDto> Leads { get; } = [];
 
@@ -39,34 +43,38 @@ public partial class MainPageViewModel : BaseViewModel
         _authService = authService;
         _apiClient = apiClient;
         _navigation = navigation;
+
         Title = "SDC CRM";
-
+        WelcomeMessage = DefaultWelcomeMessage;
         IsOnline = _connectivityService.IsConnected;
-        _connectivityService.ConnectivityChanged += OnConnectivityChanged;
-    }
-
-    private void OnConnectivityChanged(object? sender, bool isConnected)
-    {
-        IsOnline = isConnected;
     }
 
     /// <summary>Loads the current user and their leads when the page appears.</summary>
     [RelayCommand]
     private async Task AppearingAsync(CancellationToken cancellationToken)
     {
+        StartFollowingConnectivity();
+
         var user = await _authService.GetUserAsync(cancellationToken);
         if (user is null)
         {
-            await _navigation.GoToAsync("//login");
+            await _navigation.GoToAsync(AppRoutes.ToLogin);
             return;
         }
 
         WelcomeMessage = string.IsNullOrWhiteSpace(user.UserName)
-            ? "Witaj w SDC CRM Mobile!"
+            ? DefaultWelcomeMessage
             : $"Witaj, {user.UserName}!";
 
         await LoadLeadsAsync(cancellationToken);
     }
+
+    /// <summary>
+    /// Called when the page is hidden. The connectivity service lives for the whole app, while this
+    /// view model is transient - unsubscribing lets it be garbage collected.
+    /// </summary>
+    [RelayCommand]
+    private void Disappearing() => StopFollowingConnectivity();
 
     [RelayCommand]
     private async Task RefreshAsync(CancellationToken cancellationToken)
@@ -103,7 +111,13 @@ public partial class MainPageViewModel : BaseViewModel
         catch (CrmUnauthorizedException)
         {
             await _authService.LogoutAsync(cancellationToken);
-            await _navigation.GoToAsync("//login");
+            await _navigation.GoToAsync(AppRoutes.ToLogin);
+        }
+        catch (CrmForbiddenException)
+        {
+            // Signed in, but the role cannot see leads (e.g. backoffice) - keep the session.
+            Leads.Clear();
+            SetError("Brak uprawnień do listy leadów dla Twojej roli.");
         }
         catch (Exception ex)
         {
@@ -120,6 +134,32 @@ public partial class MainPageViewModel : BaseViewModel
     {
         await _authService.LogoutAsync();
         Leads.Clear();
-        await _navigation.GoToAsync("//login");
+        await _navigation.GoToAsync(AppRoutes.ToLogin);
     }
+
+    private void StartFollowingConnectivity()
+    {
+        IsOnline = _connectivityService.IsConnected;
+
+        if (_isFollowingConnectivity)
+        {
+            return;
+        }
+
+        _connectivityService.ConnectivityChanged += OnConnectivityChanged;
+        _isFollowingConnectivity = true;
+    }
+
+    private void StopFollowingConnectivity()
+    {
+        if (!_isFollowingConnectivity)
+        {
+            return;
+        }
+
+        _connectivityService.ConnectivityChanged -= OnConnectivityChanged;
+        _isFollowingConnectivity = false;
+    }
+
+    private void OnConnectivityChanged(object? sender, bool isConnected) => IsOnline = isConnected;
 }

@@ -43,15 +43,26 @@ public sealed class CrmApiClient(HttpClient httpClient) : ICrmApiClient
 
     private static void EnsureAuthorized(HttpResponseMessage response)
     {
-        if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
+        switch (response.StatusCode)
         {
-            throw new CrmUnauthorizedException();
+            case HttpStatusCode.Unauthorized:
+                // Missing or expired session: the user has to sign in again.
+                throw new CrmUnauthorizedException();
+            case HttpStatusCode.Forbidden:
+                // Valid session, but the user's role is not allowed to perform the operation.
+                throw new CrmForbiddenException();
         }
     }
 }
 
-/// <summary>Raised when the API rejects the request due to auth/permissions.</summary>
+/// <summary>Raised when the API rejects the session (HTTP 401) - the user must sign in again.</summary>
 public sealed class CrmUnauthorizedException() : Exception("Brak autoryzacji. Zaloguj się ponownie.");
+
+/// <summary>
+/// Raised when the user is signed in but their role does not allow the operation (HTTP 403).
+/// The session stays valid, so this must not sign the user out.
+/// </summary>
+public sealed class CrmForbiddenException() : Exception("Brak uprawnień do wykonania tej operacji.");
 
 /// <summary>Raised for non-success API responses that carry error details.</summary>
 public sealed class CrmApiException(string message, string? detail) : Exception(message)

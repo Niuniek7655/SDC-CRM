@@ -48,7 +48,7 @@
                                 <Label Text="{Binding CompanyName}" FontAttributes="Bold" />
                                 <Label Text="{Binding ContactName}" FontSize="13" />
                                 <Label Text="{Binding ContactEmail}" FontSize="12" TextColor="{StaticResource Gray500}" />
-                                <Label Text="{Binding Status}" FontSize="12" />
+                                <Label Text="{Binding Status, Converter={StaticResource LeadStatusToLabelConverter}}" FontSize="12" />
                             </VerticalStackLayout>
                         </Border>
                     </DataTemplate>

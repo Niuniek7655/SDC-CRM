@@ -86,6 +86,62 @@ public sealed class MainPageViewModelTests
     }
 
     [Test]
+    public async Task Refresh__When_role_is_not_allowed_to_see_leads_403__Should_show_no_access_message_and_keep_user_signed_in()
+    {
+        _connectivity.IsConnected.Returns(true);
+        _apiClient.GetMyLeadsAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<IReadOnlyList<LeadSummaryDto>>(new CrmForbiddenException()));
+        var viewModel = CreateViewModel();
+
+        await viewModel.RefreshCommand.ExecuteAsync(null);
+
+        await Assert.That(viewModel.HasError).IsTrue();
+        await Assert.That(viewModel.ErrorMessage).Contains("Brak uprawnień");
+        await _authService.DidNotReceive().LogoutAsync(Arg.Any<CancellationToken>());
+        await _navigation.DidNotReceive().GoToAsync(Arg.Any<string>(), Arg.Any<IDictionary<string, object>?>());
+    }
+
+    [Test]
+    public async Task Appearing__When_page_is_visible__Should_follow_connectivity_changes()
+    {
+        GivenSignedInSalespersonOnline();
+        var viewModel = CreateViewModel();
+        await viewModel.AppearingCommand.ExecuteAsync(null);
+
+        _connectivity.ConnectivityChanged += Raise.Event<EventHandler<bool>>(_connectivity, false);
+
+        await Assert.That(viewModel.IsOnline).IsFalse();
+    }
+
+    [Test]
+    public async Task Appearing__When_page_appears_repeatedly__Should_subscribe_to_connectivity_only_once()
+    {
+        GivenSignedInSalespersonOnline();
+        var viewModel = CreateViewModel();
+
+        await viewModel.AppearingCommand.ExecuteAsync(null);
+        await viewModel.AppearingCommand.ExecuteAsync(null);
+
+        _connectivity.Received(1).ConnectivityChanged += Arg.Any<EventHandler<bool>>();
+        await Assert.That(viewModel.IsOnline).IsTrue();
+    }
+
+    [Test]
+    public async Task Disappearing__When_page_is_hidden__Should_stop_following_connectivity_changes()
+    {
+        GivenSignedInSalespersonOnline();
+        var viewModel = CreateViewModel();
+        await viewModel.AppearingCommand.ExecuteAsync(null);
+
+        viewModel.DisappearingCommand.Execute(null);
+        _connectivity.ConnectivityChanged += Raise.Event<EventHandler<bool>>(_connectivity, false);
+
+        // The app-wide connectivity service no longer references the (transient) view model.
+        _connectivity.Received(1).ConnectivityChanged -= Arg.Any<EventHandler<bool>>();
+        await Assert.That(viewModel.IsOnline).IsTrue();
+    }
+
+    [Test]
     public async Task Logout__When_user_logs_out__Should_clear_leads_and_navigate_to_login()
     {
         GivenSignedInSalespersonOnline();

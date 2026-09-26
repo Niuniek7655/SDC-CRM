@@ -7,18 +7,20 @@ namespace SDC.CRM.Mobile.Presentation.ViewModels;
 /// </summary>
 public abstract partial class BaseViewModel : ObservableObject
 {
+    // Partial properties (C# 14) instead of [ObservableProperty] fields: the generated code is
+    // trimming/AOT friendly, including WinRT (MVVMTK0045).
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsNotBusy))]
-    private bool _isBusy;
+    public partial bool IsBusy { get; set; }
 
     [ObservableProperty]
-    private string? _title;
+    public partial string? Title { get; set; }
 
     [ObservableProperty]
-    private string? _errorMessage;
+    public partial string? ErrorMessage { get; set; }
 
     [ObservableProperty]
-    private bool _hasError;
+    public partial bool HasError { get; set; }
 
     public bool IsNotBusy => !IsBusy;
 

@@ -173,6 +173,9 @@
     <Project Path="Frontend/Mobile/src/SDC.CRM.Mobile/SDC.CRM.Mobile.csproj" />
     <Project Path="Frontend/Mobile/src/SDC.CRM.Mobile.Core/SDC.CRM.Mobile.Core.csproj" />
   </Folder>
+  <Folder Name="/Frontend/Mobile/tests/">
+    <Project Path="Frontend/Mobile/tests/SDC.CRM.Mobile.Tests/SDC.CRM.Mobile.Tests.csproj" />
+  </Folder>
   <Folder Name="/Integrations/" />
 </Solution>
 

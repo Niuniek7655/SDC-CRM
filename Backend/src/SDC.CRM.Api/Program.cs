@@ -5,7 +5,6 @@ using SDC.CRM.Api.Middleware;
 using SDC.CRM.Api.OpenApi;
 using SDC.CRM.Application;
 using SDC.CRM.Infrastructure;
-using SDC.CRM.Infrastructure.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -21,11 +20,8 @@ builder.Services.AddInfrastructure(builder.Configuration);
 
 var app = builder.Build();
 
-using (var scope = app.Services.CreateScope())
-{
-    var dbContext = scope.ServiceProvider.GetRequiredService<CrmDbContext>();
-    dbContext.Database.EnsureCreated();
-}
+// The database schema is managed by EF Core migrations applied explicitly
+// (dotnet ef database update / migration bundle) - never implicitly at startup.
 
 if (app.Environment.IsDevelopment())
 {

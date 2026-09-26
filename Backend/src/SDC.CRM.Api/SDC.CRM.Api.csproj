@@ -7,6 +7,15 @@
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.12" />
   </ItemGroup>
 
+  <!--
+    Design-time only: the EF Core tools (dotnet ef ... -startup-project SDC.CRM.Api) need this package in the
+    startup project. PrivateAssets/Publish="false" keep it (and its MSBuild dependencies) out of consumers
+    and out of the published application / container image.
+  -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12" PrivateAssets="all" Publish="false" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\SDC.CRM.Application\SDC.CRM.Application.csproj" />
     <ProjectReference Include="..\SDC.CRM.Infrastructure\SDC.CRM.Infrastructure.csproj" />

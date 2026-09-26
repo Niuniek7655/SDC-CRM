@@ -54,15 +54,21 @@ Agregat `Lead` pilnuje reguł:
 
 ## Budowanie i uruchamianie
 
-Wszystkie polecenia uruchamiaj z katalogu `backend` (lub wskaż solucję `../SDC-CRM.slnx`).
+Polecenia uruchamiaj z katalogu głównego repozytorium. Filtr solucji `Backend/SDC.CRM.Backend.slnf`
+obejmuje wszystkie projekty backendu (bez aplikacji MAUI), a `global.json` włącza tryb
+Microsoft.Testing.Platform wymagany przez TUnit w `dotnet test` na .NET 10 SDK.
 
 ```bash
-dotnet restore
-dotnet build
-dotnet test
+dotnet restore Backend/SDC.CRM.Backend.slnf
+dotnet build Backend/SDC.CRM.Backend.slnf
+dotnet test --solution Backend/SDC.CRM.Backend.slnf
 
-# uruchomienie API
-dotnet run --project src/SDC.CRM.Api
+# jednorazowo: narzędzia lokalne (dotnet-ef) i schemat bazy - patrz "Migracje schematu"
+dotnet tool restore
+dotnet ef database update --project Backend/src/SDC.CRM.Infrastructure --startup-project Backend/src/SDC.CRM.Api
+
+# uruchomienie API (profil Development z launchSettings.json)
+dotnet run --project Backend/src/SDC.CRM.Api
 ```
 
 API domyślnie nasłuchuje na `http://localhost:5080` (oraz `https://localhost:7080`).
@@ -82,10 +88,37 @@ docker compose up -d postgres
 
 Connection string konfigurowany jest pod kluczem `ConnectionStrings:Crm`
 (wartość deweloperska w `appsettings.Development.json`, patrz [Konfiguracja środowisk](#konfiguracja-środowisk)).
-Schemat jest tworzony automatycznie przy starcie przez `EnsureCreated()` (tylko na potrzeby developmentu).
 
-> TODO (decyzja techniczna): przed produkcją zastąpić `EnsureCreated()` migracjami EF Core
-> (`dotnet ef migrations add`) i uruchamiać je kontrolowanie zamiast tworzenia schematu w runtime.
+### Migracje schematu (EF Core)
+
+Schemat bazy jest zarządzany migracjami EF Core w `src/SDC.CRM.Infrastructure/Persistence/Migrations`.
+Aplikacja **nie** tworzy ani nie migruje schematu przy starcie - migracje stosuje się zawsze jawnie,
+także lokalnie. Narzędzie `dotnet-ef` jest przypięte w manifeście `dotnet-tools.json` w katalogu głównym
+(`dotnet tool restore`). Projekt `SDC.CRM.Api` jest projektem startowym narzędzi - w środowisku
+Development connection string pochodzi z `appsettings.Development.json`.
+
+```bash
+# z katalogu głównego repozytorium
+dotnet tool restore
+
+# zastosowanie brakujących migracji (tworzy bazę, jeśli nie istnieje)
+dotnet ef database update --project Backend/src/SDC.CRM.Infrastructure --startup-project Backend/src/SDC.CRM.Api
+
+# nowa migracja po zmianie modelu (np. nowe pole agregatu) - przeglądana w PR jak zwykły kod
+dotnet ef migrations add <NazwaMigracji> --project Backend/src/SDC.CRM.Infrastructure --startup-project Backend/src/SDC.CRM.Api --output-dir Persistence/Migrations
+
+# kontrola: czy model ma zmiany bez migracji
+dotnet ef migrations has-pending-model-changes --project Backend/src/SDC.CRM.Infrastructure --startup-project Backend/src/SDC.CRM.Api
+```
+
+Inne środowiska: idempotentny skrypt SQL do przeglądu (`dotnet ef migrations script --idempotent ...`)
+albo samodzielny plik wykonywalny migracji uruchamiany w procesie wdrożenia
+(`dotnet ef migrations bundle ...`, a następnie `./efbundle --connection "<connection string>"`).
+
+> **Jednorazowo po przejściu z `EnsureCreated()`**: lokalna baza `appdb` utworzona wcześniej przy starcie API
+> nie ma tabeli `__EFMigrationsHistory`, więc `database update` zgłosi błąd `relation "Leads" already exists`.
+> Usuń ją raz, np. `docker exec -it dotnet-postgres psql -U app -d postgres -c "DROP DATABASE appdb;"`,
+> i ponownie uruchom `dotnet ef database update` (tracone są tylko lokalne dane testowe).
 
 ## Konfiguracja środowisk
 

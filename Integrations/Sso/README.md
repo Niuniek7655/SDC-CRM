@@ -222,12 +222,15 @@ cd D:\Users\szymo\repo\SDC-CRM\Integrations\Sso
 ./manage-sso.ps1 status
 ./register-sdc-crm-clients.ps1          # one-time client/scope registration
 
-# 2. Backend API (resource server)  -> http://localhost:5080
-cd ..\..\Backend\src\SDC.CRM.Api
-dotnet run
+# 2. Database + backend API (resource server)  -> http://localhost:5080
+cd ..\..
+docker compose up -d postgres
+dotnet tool restore
+dotnet ef database update --project Backend/src/SDC.CRM.Infrastructure --startup-project Backend/src/SDC.CRM.Api
+dotnet run --project Backend/src/SDC.CRM.Api
 
 # 3. Angular web (public OIDC client) -> http://localhost:4200
-cd ..\..\..\Frontend\Web
+cd Frontend\Web
 npm install
 npm start
 

@@ -154,11 +154,6 @@
     <File Path="doc/crm_ddd_ai_agent_package/diagrams/png/06_process_05_backoffice_order_processing.png" />
     <File Path="doc/crm_ddd_ai_agent_package/diagrams/png/07_process_06_integration_invoice_payment_reporting.png" />
   </Folder>
-  <Folder Name="/doc/crm_ddd_ai_agent_package/diagrams/source/">
-    <File Path="doc/crm_ddd_ai_agent_package/diagrams/source/crm_ddd_communication.dot" />
-    <File Path="doc/crm_ddd_ai_agent_package/diagrams/source/crm_ddd_communication.png" />
-    <File Path="doc/crm_ddd_ai_agent_package/diagrams/source/crm_ddd_communication.svg" />
-  </Folder>
   <Folder Name="/doc/crm_ddd_ai_agent_package/original_brief/">
     <File Path="doc/crm_ddd_ai_agent_package/original_brief/CRM_project_brief.md" />
   </Folder>

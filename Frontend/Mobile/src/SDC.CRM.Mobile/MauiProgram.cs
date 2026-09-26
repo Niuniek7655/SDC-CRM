@@ -29,7 +29,9 @@ public static class MauiProgram
         builder.Services.AddSingleton<INavigationService, ShellNavigationService>();
 
         // Authentication (OIDC via system browser)
+        builder.Services.AddSingleton(TimeProvider.System);
         builder.Services.AddSingleton<IBrowser, WebAuthenticatorBrowser>();
+        builder.Services.AddSingleton<IOidcSessionClient, DuendeOidcSessionClient>();
         builder.Services.AddSingleton<IAuthService, OidcAuthService>();
         builder.Services.AddTransient<AuthHeaderHandler>();
 

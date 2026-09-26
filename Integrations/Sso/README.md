@@ -152,7 +152,7 @@ Register these once (via `register-sdc-crm-clients.ps1` or the admin panel):
 |--------|------|-----------|
 | `sdc-crm-api` | API scope / resource | Audience `sdc-crm-api`, exposed |
 | `sdc-crm-web` | Public SPA client | Redirect `http://localhost:4200/`, PKCE, no secret |
-| `sdc-crm-mobile` | Public mobile client | Redirect `com.sdc.crm.mobile://callback`, PKCE, no secret |
+| `sdc-crm-mobile` | Public mobile client | Redirect `com.sdc.crm.mobile://callback`, post-logout redirect `com.sdc.crm.mobile://signout`, PKCE, no secret |
 | CRM roles | Roles/groups | `Salesperson`, `SalesManager`, `BackofficeUser`, `BackofficeManager`, `Admin` |
 
 All clients request scopes: `openid profile email role offline_access sdc-crm-api`.
@@ -196,7 +196,11 @@ The script authenticates with the seeded `SIDS-manager` client and provisions
 - one group per role (`SDC CRM <Role>`) with the matching role attached,
 - assignment of the `administrator` user to the requested role group(s).
 
-The script is idempotent - it is safe to re-run. Useful switches:
+The script is idempotent - it is safe to re-run. Existing clients are skipped, not updated: if
+`sdc-crm-mobile` was registered before the mobile logout support, add the post-logout redirect URI
+`com.sdc.crm.mobile://signout` manually (admin panel → Clients → `sdc-crm-mobile` → post logout redirect URIs)
+or delete the client and re-run the script. Without it the identity provider rejects the end-session request
+and the mobile app signs out only locally. Useful switches:
 
 ```powershell
 # Give the administrator more than just the Admin role

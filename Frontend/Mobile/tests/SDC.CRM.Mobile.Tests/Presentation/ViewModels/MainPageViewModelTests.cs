@@ -72,7 +72,7 @@ public sealed class MainPageViewModelTests
     }
 
     [Test]
-    public async Task Refresh__When_api_rejects_session_with_401__Should_log_out_and_navigate_to_login()
+    public async Task Refresh__When_api_rejects_session_with_401__Should_forget_local_session_and_navigate_to_login()
     {
         _connectivity.IsConnected.Returns(true);
         _apiClient.GetMyLeadsAsync(Arg.Any<CancellationToken>())
@@ -81,7 +81,9 @@ public sealed class MainPageViewModelTests
 
         await viewModel.RefreshCommand.ExecuteAsync(null);
 
-        await _authService.Received(1).LogoutAsync(Arg.Any<CancellationToken>());
+        // An expired session is only forgotten locally - no browser round-trip to the identity provider.
+        await _authService.Received(1).ClearSessionAsync(Arg.Any<CancellationToken>());
+        await _authService.DidNotReceive().LogoutAsync(Arg.Any<CancellationToken>());
         await _navigation.Received(1).GoToAsync("//login", Arg.Any<IDictionary<string, object>?>());
     }
 

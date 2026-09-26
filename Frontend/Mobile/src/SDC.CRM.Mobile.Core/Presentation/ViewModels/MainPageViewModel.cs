@@ -110,7 +110,8 @@ public partial class MainPageViewModel : BaseViewModel
         }
         catch (CrmUnauthorizedException)
         {
-            await _authService.LogoutAsync(cancellationToken);
+            // Expired/invalid session: forget it locally and sign in again (no SSO end-session round-trip).
+            await _authService.ClearSessionAsync(cancellationToken);
             await _navigation.GoToAsync(AppRoutes.ToLogin);
         }
         catch (CrmForbiddenException)

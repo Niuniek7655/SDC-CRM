@@ -33,6 +33,7 @@ param(
     [string]$AdminClientSecret = "password",
     [string[]]$WebRedirectUris = @("http://localhost:4200/", "http://localhost:4200"),
     [string]$MobileRedirectUri = "com.sdc.crm.mobile://callback",
+    [string]$MobilePostLogoutRedirectUri = "com.sdc.crm.mobile://signout",
     [string]$AdminUserLogin = "administrator",
     [string[]]$AdminUserRoles = @("Admin"),
     [string]$TestUserPassword = "Test123!",
@@ -323,6 +324,8 @@ else {
         is_public      = $true
         client_type    = $ClientType_Mobile
         redirect_uris  = @($MobileRedirectUri)
+        # Target of the end_session redirect after logout in the mobile app (system browser).
+        post_logout_redirect_uris = @($MobilePostLogoutRedirectUri)
         grant_types    = @("authorization_code", "refresh_token")
         response_types = @("code")
         scope          = "openid profile email role offline_access sdc-crm-api"

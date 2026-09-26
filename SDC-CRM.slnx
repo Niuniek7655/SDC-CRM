@@ -171,6 +171,7 @@
   </Folder>
   <Folder Name="/Frontend/Mobile/src/">
     <Project Path="Frontend/Mobile/src/SDC.CRM.Mobile/SDC.CRM.Mobile.csproj" />
+    <Project Path="Frontend/Mobile/src/SDC.CRM.Mobile.Core/SDC.CRM.Mobile.Core.csproj" />
   </Folder>
   <Folder Name="/Integrations/" />
 </Solution>

@@ -1,8 +1,8 @@
 ﻿<?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-             xmlns:viewmodels="clr-namespace:SDC.CRM.Mobile.Presentation.ViewModels"
-             xmlns:contracts="clr-namespace:SDC.CRM.Mobile.Infrastructure.Api.Contracts"
+             xmlns:viewmodels="clr-namespace:SDC.CRM.Mobile.Presentation.ViewModels;assembly=SDC.CRM.Mobile.Core"
+             xmlns:contracts="clr-namespace:SDC.CRM.Mobile.Infrastructure.Api.Contracts;assembly=SDC.CRM.Mobile.Core"
              x:Class="SDC.CRM.Mobile.MainPage"
              x:DataType="viewmodels:MainPageViewModel"
              Title="{Binding Title}">

@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Platform-independent part of the mobile client: ViewModels, typed API client, OIDC session logic,
+    navigation routes and connectivity/navigation abstractions. Targets plain net10.0 so it can be unit
+    tested without MAUI workloads or devices. MAUI-specific adapters (secure storage, system browser,
+    Shell navigation, connectivity, value converters) stay in SDC.CRM.Mobile.
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>SDC.CRM.Mobile</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <PackageReference Include="Duende.IdentityModel.OidcClient" Version="7.1.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.12" />
+  </ItemGroup>
+
+</Project>
+

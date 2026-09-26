@@ -1,0 +1,13 @@
+# Build context for Backend/Dockerfile - keep it small and free of local artifacts.
+**/bin/
+**/obj/
+**/TestResults/
+**/.vs/
+**/.idea/
+**/*.user
+tests/
+*.slnf
+*.md
+Dockerfile
+.dockerignore
+

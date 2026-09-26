@@ -159,6 +159,24 @@ API wysyła ślady (traces), metryki i logi przez OTLP do OpenTelemetry Collecto
   (także dla klientów przeglądarkowych przez CORS), trafia do scope logów (`CorrelationId`) i jako tag `correlation.id` do śladu.
 - Podgląd lokalnie: Seq `http://localhost:5341`, Jaeger `http://localhost:16686`, Grafana `http://localhost:3000`.
 
+## Kontener (Docker)
+
+```bash
+# z katalogu głównego repozytorium (kontekstem budowania jest katalog Backend)
+docker build -f Backend/Dockerfile -t sdc-crm-api Backend
+
+docker run --rm -p 8080:8080 \
+  -e ConnectionStrings__Crm="Host=<host>;Port=5432;Database=appdb;Username=<user>;Password=<password>" \
+  -e Oidc__Authority="https://<sso-host>/master" \
+  -e OTEL_EXPORTER_OTLP_ENDPOINT="http://<collector-host>:4317" \
+  sdc-crm-api
+```
+
+Obraz (wieloetapowy, użytkownik bez uprawnień root, port `8080`) nie zawiera konfiguracji ani sekretów
+i nie stosuje migracji - schemat aktualizuje się osobno (patrz [Migracje schematu](#migracje-schematu-ef-core)).
+Przy lokalnym SSO wystawcą tokenów jest `http://localhost:5001/master`, więc API musi widzieć SSO pod tym samym
+adresem co klienci; do developmentu wygodniej uruchamiać API poza kontenerem (`dotnet run`). Obraz buduje CI.
+
 ## Jak działają testy API
 
 Uruchomienie: `dotnet test --solution Backend/SDC.CRM.Backend.slnf` (wszystkie projekty) albo

@@ -40,20 +40,22 @@ All images are public and available on [Docker Hub](https://hub.docker.com/u/sim
 ### 1. Start the environment
 
 **Requirements:**
-- Docker Desktop running
-- Docker Compose (built into Docker Desktop)
+- Docker running (Docker Desktop, or Docker Engine e.g. in WSL)
+- Docker Compose
 
 ```powershell
 cd D:\Users\szymo\repo\SDC-CRM\Integrations\Sso
 
-# Start all containers
-docker compose up -d
+# Start all containers, wait for IdServer and provision the SDC-CRM clients, roles and test users
+./manage-sso.ps1 start
 
 # Check status
-docker compose ps
+./manage-sso.ps1 status
 ```
 
-> **Note:** Make sure Docker Desktop is running before executing the above commands.
+`manage-sso.ps1 start` runs `docker compose up -d`, waits until IdServer responds and then runs
+`register-sdc-crm-clients.ps1` (see [Register the OAuth clients automatically](#register-the-oauth-clients-automatically)).
+Plain `docker compose up -d` only starts the containers - run `./manage-sso.ps1 provision` afterwards.
 
 ### Configuration (optional `.env`)
 
@@ -71,7 +73,7 @@ On first start, IdServer will automatically:
 - ✅ Create administrator user
 - ✅ Create default OAuth clients
 
-**This process may take 30-60 seconds.**
+**This process may take 30-60 seconds.** `manage-sso.ps1 start` waits for it automatically (up to 3 minutes).
 
 Check logs:
 ```powershell
@@ -120,7 +122,7 @@ docker compose down -v
 
 ### Reset from scratch
 ```powershell
-docker compose down -v ; docker compose up -d
+docker compose down -v ; ./manage-sso.ps1 start
 ```
 
 ### View logs
@@ -146,7 +148,7 @@ bearer access token.
 
 ### Required objects in SimpleIdServer
 
-Register these once (via `register-sdc-crm-clients.ps1` or the admin panel):
+They are provisioned automatically by `./manage-sso.ps1 start` (via `register-sdc-crm-clients.ps1`, see below):
 
 | Object | Kind | Key values |
 |--------|------|-----------|
@@ -180,9 +182,13 @@ through environment variables, e.g. `Oidc__Authority`):
 
 ### Register the OAuth clients automatically
 
+`./manage-sso.ps1 start` runs the registration on every start. To run it on its own (the environment
+must be up):
+
 ```powershell
 cd D:\Users\szymo\repo\SDC-CRM\Integrations\Sso
-./register-sdc-crm-clients.ps1
+./manage-sso.ps1 provision        # waits for IdServer, then runs register-sdc-crm-clients.ps1
+./register-sdc-crm-clients.ps1    # the script itself - accepts the switches listed below
 ```
 
 The script authenticates with the seeded `SIDS-manager` client and provisions
@@ -196,11 +202,11 @@ The script authenticates with the seeded `SIDS-manager` client and provisions
 - one group per role (`SDC CRM <Role>`) with the matching role attached,
 - assignment of the `administrator` user to the requested role group(s).
 
-The script is idempotent - it is safe to re-run. Existing clients are skipped, not updated: if
-`sdc-crm-mobile` was registered before the mobile logout support, add the post-logout redirect URI
-`com.sdc.crm.mobile://signout` manually (admin panel → Clients → `sdc-crm-mobile` → post logout redirect URIs)
-or delete the client and re-run the script. Without it the identity provider rejects the end-session request
-and the mobile app signs out only locally. Useful switches:
+The script is idempotent - it is safe to re-run - and it reconciles existing clients with the definitions
+in the script: redirect URIs and post-logout redirect URIs missing in SimpleIdServer are added, while URIs
+added manually and all other client settings are kept. A URI introduced in the script (e.g. the mobile logout
+return address `com.sdc.crm.mobile://signout`) therefore reaches existing environments on the next
+`./manage-sso.ps1 start` - no manual step in the admin panel. Useful switches:
 
 ```powershell
 # Give the administrator more than just the Admin role
@@ -215,16 +221,21 @@ and the mobile app signs out only locally. Useful switches:
 > The role scope names (`Salesperson`, `SalesManager`, `BackofficeUser`,
 > `BackofficeManager`, `Admin`) match the backend `CrmRoles` constants exactly.
 
+> SimpleIdServer 6.x management API details handled by the script: `POST clients` expects enum names
+> (`client_type: "SPA"` / `"MOBILE"`) and translatable fields as `client_name#en`; `PUT clients/{id}` addresses
+> the client by its technical id (GUID, not `client_id`), overwrites every field of the client details form
+> and expects numeric enums (`access_token_type`), so the script sends back the current values of all fields
+> it does not change.
+
 After running the script, **sign out / sign in again** so a fresh token carries
 the `role` claim.
 
 ### End-to-end run order
 
 ```powershell
-# 1. Identity provider (already running in your case)
+# 1. Identity provider + SDC-CRM clients, roles and test users (idempotent, safe to re-run)
 cd D:\Users\szymo\repo\SDC-CRM\Integrations\Sso
-./manage-sso.ps1 status
-./register-sdc-crm-clients.ps1          # one-time client/scope registration
+./manage-sso.ps1 start
 
 # 2. Database + backend API (resource server)  -> http://localhost:5080
 cd ..\..
@@ -427,8 +438,6 @@ docker compose up -d
 ## ✅ First Run Checklist
 
 - [ ] (Optional) Copy `.env.example` to `.env` to change ports or credentials
-- [ ] Run `docker compose up -d`
-- [ ] Wait 30-60 seconds for initialization
-- [ ] Check http://localhost:5001/master/.well-known/openid-configuration
-- [ ] Run `./register-sdc-crm-clients.ps1` (API scope, `sdc-crm-web` and `sdc-crm-mobile` clients, roles, groups, test users)
+- [ ] Run `./manage-sso.ps1 start` (starts the containers, waits for IdServer and provisions the API scope,
+      `sdc-crm-web` and `sdc-crm-mobile` clients, roles, groups and test users)
 - [ ] Log in to the admin panel http://localhost:5002/master/clients to verify the clients

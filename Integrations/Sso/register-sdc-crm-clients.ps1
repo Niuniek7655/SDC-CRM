@@ -15,6 +15,11 @@
       * assignment of the administrator user to the requested role group(s), so a fresh
         token immediately carries the `role` claim.
 
+    Existing clients are reconciled with the definitions in this script: redirect URIs and
+    post-logout redirect URIs missing in the identity provider are added (URIs added manually
+    are kept, other client settings are not changed). Re-running the script - which
+    `manage-sso.ps1 start` does automatically - brings older environments up to date.
+
     It authenticates with the seeded `SIDS-manager` client via client_credentials and
     calls the realm-prefixed management API (e.g. http://localhost:5001/master/...).
 
@@ -46,13 +51,30 @@ param(
 $ErrorActionPreference = "Stop"
 $base = "$Authority/$Realm"
 
-# Scope/type enums from the SimpleIdServer domain model.
+# Scope enums from the SimpleIdServer domain model (the scopes API accepts numeric values).
 $ScopeType_ApiResource = 1
 $ScopeType_Role = 2
 $Protocol_OpenId = 0
 $Protocol_OAuth = 2
-$ClientType_Spa = 0
-$ClientType_Mobile = 3
+
+# Client enums (SimpleIdServer 6.x). Creating a client (POST clients) accepts only enum names - a number
+# in client_type fails with HTTP 500 - while updating it (PUT clients/{id}) accepts only numbers for
+# access_token_type / token_exchange_type, which GET returns as names.
+$ClientType_Spa = "SPA"
+$ClientType_Mobile = "MOBILE"
+$AccessTokenTypeValues = @{ Jwt = 0; Reference = 1 }
+$TokenExchangeTypeValues = @{ DELEGATION = 0; IMPERSONATION = 1 }
+
+# Fields of UpdateClientRequest (PUT clients/{id}). The endpoint overwrites every one of them, so an
+# update sends the current value of each field it does not change. 'client_name' is set separately;
+# 'parameters' is left out on purpose - null keeps the existing client parameters.
+$ClientUpdateFields = @(
+    "redirect_uris", "post_logout_redirect_uris", "grant_types", "is_public", "is_consent_disabled",
+    "access_token_type", "redirect_revoke_session_ui", "frontchannel_logout_uri",
+    "frontchannel_logout_session_required", "backchannel_logout_uri", "backchannel_logout_session_required",
+    "token_exchange_type", "is_token_exchange_enabled", "jwks_uri", "is_redirect_url_casesensitive",
+    "default_acr_values"
+)
 
 # CRM role names - must match the backend `CrmRoles` constants exactly.
 $CrmRoles = @("Salesperson", "SalesManager", "BackofficeUser", "BackofficeManager", "Admin")
@@ -151,14 +173,16 @@ function Invoke-Search {
     return @($resp)
 }
 
-function Test-Exists {
-    param([string]$Path)
+# Returns the client with the given client_id, or $null when it does not exist.
+function Get-SidClient {
+    param([string]$ClientId)
     try {
-        Invoke-RestMethod -Uri "$base/$Path" -Method Get -Headers $script:Headers | Out-Null
-        return $true
+        return Invoke-Sid -Method Get -Path "clients/$ClientId"
     }
     catch {
-        return $false
+        $response = $_.Exception.Response
+        if ($response -and [int]$response.StatusCode -eq 404) { return $null }
+        throw
     }
 }
 
@@ -187,6 +211,76 @@ function Get-GroupByName([string]$name) {
 function Get-UserByLogin([string]$login) {
     $users = Invoke-Search -Path "users/.search"
     return ($users | Where-Object { $_.name -eq $login } | Select-Object -First 1)
+}
+
+# Values from $Expected that are missing in $Actual (exact, case-sensitive match, as for redirect URIs).
+function Get-MissingValues {
+    param($Expected, $Actual)
+    $current = @($Actual | Where-Object { $_ })
+    return @($Expected | Where-Object { $current -cnotcontains $_ })
+}
+
+function New-PublicClient {
+    param([hashtable]$Definition)
+    Invoke-Sid -Method Post -Path "clients" -Body @{
+        id                        = [guid]::NewGuid().ToString()
+        client_id                 = $Definition.ClientId
+        # Translatable field '<name>#<language>' - a plain client_name is not stored on create.
+        "client_name#en"          = $Definition.ClientName
+        # Public client: no secret; PKCE is enforced per authorization request.
+        is_public                 = $true
+        client_type               = $Definition.ClientType
+        redirect_uris             = $Definition.RedirectUris
+        post_logout_redirect_uris = $Definition.PostLogoutRedirectUris
+        grant_types               = @("authorization_code", "refresh_token")
+        response_types            = @("code")
+        scope                     = "openid profile email role offline_access sdc-crm-api"
+    } | Out-Null
+}
+
+# Creates the client, or adds the redirect / post-logout redirect URIs it is missing.
+function Sync-PublicClient {
+    param([hashtable]$Definition)
+    $clientId = $Definition.ClientId
+    Write-Step "Ensuring public client '$clientId'"
+
+    $client = Get-SidClient -ClientId $clientId
+    if (-not $client) {
+        New-PublicClient -Definition $Definition
+        Write-Ok "created client $clientId"
+        return
+    }
+
+    $missingRedirectUris = @(Get-MissingValues $Definition.RedirectUris $client.redirect_uris)
+    $missingPostLogoutUris = @(Get-MissingValues $Definition.PostLogoutRedirectUris $client.post_logout_redirect_uris)
+    if ($missingRedirectUris.Count -eq 0 -and $missingPostLogoutUris.Count -eq 0) {
+        Write-Skip "client $clientId already exists and is up to date"
+        return
+    }
+
+    $update = [ordered]@{}
+    foreach ($field in $ClientUpdateFields) { $update[$field] = $client.$field }
+    $update["redirect_uris"] = @(@($client.redirect_uris | Where-Object { $_ }) + $missingRedirectUris)
+    $update["post_logout_redirect_uris"] = @(@($client.post_logout_redirect_uris | Where-Object { $_ }) + $missingPostLogoutUris)
+    $update["client_name"] = if ($client."client_name#en") { $client."client_name#en" } else { $Definition.ClientName }
+    if ($update["access_token_type"] -is [string]) {
+        $update["access_token_type"] = $AccessTokenTypeValues[$update["access_token_type"]]
+    }
+    if ($update["token_exchange_type"] -is [string]) {
+        $update["token_exchange_type"] = $TokenExchangeTypeValues[$update["token_exchange_type"]]
+    }
+
+    # PUT addresses the client by its technical id (GUID), not by client_id.
+    Invoke-Sid -Method Put -Path "clients/$($client.id)" -Body $update | Out-Null
+
+    $updated = Get-SidClient -ClientId $clientId
+    $stillMissing = @(Get-MissingValues $Definition.RedirectUris $updated.redirect_uris) +
+        @(Get-MissingValues $Definition.PostLogoutRedirectUris $updated.post_logout_redirect_uris)
+    if ($stillMissing.Count -gt 0) {
+        throw "client $clientId was updated, but it still misses: $($stillMissing -join ', ')"
+    }
+    foreach ($uri in $missingRedirectUris) { Write-Ok "added redirect URI $uri to $clientId" }
+    foreach ($uri in $missingPostLogoutUris) { Write-Ok "added post-logout redirect URI $uri to $clientId" }
 }
 
 # ---------------------------------------------------------------------------
@@ -289,51 +383,31 @@ if (-not $SkipRoles) {
     }
 }
 
-# 5) Public SPA client -------------------------------------------------------
-Write-Step "Ensuring public SPA client 'sdc-crm-web'"
-if (Test-Exists -Path "clients/sdc-crm-web") {
-    Write-Skip "client sdc-crm-web already exists"
-}
-else {
-    Invoke-Sid -Method Post -Path "clients" -Body @{
-        id                        = [guid]::NewGuid().ToString()
-        client_id                 = "sdc-crm-web"
-        client_name               = "SDC CRM Web"
-        # Public client: no secret; PKCE is enforced per authorization request.
-        is_public                 = $true
-        client_type               = $ClientType_Spa
-        redirect_uris             = $WebRedirectUris
-        post_logout_redirect_uris = $WebRedirectUris
-        grant_types               = @("authorization_code", "refresh_token")
-        response_types            = @("code")
-        scope                     = "openid profile email role offline_access sdc-crm-api"
-    } | Out-Null
-    Write-Ok "created client sdc-crm-web"
-}
-
-# 6) Public mobile client ----------------------------------------------------
-Write-Step "Ensuring public mobile client 'sdc-crm-mobile'"
-if (Test-Exists -Path "clients/sdc-crm-mobile") {
-    Write-Skip "client sdc-crm-mobile already exists"
-}
-else {
-    Invoke-Sid -Method Post -Path "clients" -Body @{
-        id             = [guid]::NewGuid().ToString()
-        client_id      = "sdc-crm-mobile"
-        client_name    = "SDC CRM Mobile"
-        is_public      = $true
-        client_type    = $ClientType_Mobile
-        redirect_uris  = @($MobileRedirectUri)
+# 5) Public OIDC clients -----------------------------------------------------
+# Desired state of the SDC-CRM clients: missing clients are created, existing ones receive the
+# redirect and post-logout redirect URIs they are missing (see Sync-PublicClient).
+$PublicClients = @(
+    @{
+        ClientId               = "sdc-crm-web"
+        ClientName             = "SDC CRM Web"
+        ClientType             = $ClientType_Spa
+        RedirectUris           = $WebRedirectUris
+        PostLogoutRedirectUris = $WebRedirectUris
+    }
+    @{
+        ClientId               = "sdc-crm-mobile"
+        ClientName             = "SDC CRM Mobile"
+        ClientType             = $ClientType_Mobile
+        RedirectUris           = @($MobileRedirectUri)
         # Target of the end_session redirect after logout in the mobile app (system browser).
-        post_logout_redirect_uris = @($MobilePostLogoutRedirectUri)
-        grant_types    = @("authorization_code", "refresh_token")
-        response_types = @("code")
-        scope          = "openid profile email role offline_access sdc-crm-api"
-    } | Out-Null
-    Write-Ok "created client sdc-crm-mobile"
+        PostLogoutRedirectUris = @($MobilePostLogoutRedirectUri)
+    }
+)
+foreach ($definition in $PublicClients) {
+    Sync-PublicClient -Definition $definition
 }
 
-# 7) Groups + role assignment ------------------------------------------------
+# 6) Groups + role assignment ------------------------------------------------
 $roleGroups = @{}
 if (-not $SkipGroups -and -not $SkipRoles) {
     Write-Step "Ensuring one group per CRM role"
@@ -374,7 +448,7 @@ elseif ($SkipGroups) {
     Write-Skip "skipping group creation (-SkipGroups)"
 }
 
-# 8) Assign the admin user to the requested role group(s) --------------------
+# 7) Assign the admin user to the requested role group(s) --------------------
 if (-not $SkipUserAssignment -and -not $SkipGroups -and -not $SkipRoles) {
     Write-Step "Assigning user '$AdminUserLogin' to role group(s): $($AdminUserRoles -join ', ')"
     $user = Get-UserByLogin $AdminUserLogin
@@ -415,7 +489,7 @@ elseif ($SkipUserAssignment) {
     Write-Skip "skipping user assignment (-SkipUserAssignment)"
 }
 
-# 9) Create test users for each CRM role -------------------------------------
+# 8) Create test users for each CRM role -------------------------------------
 if (-not $SkipTestUsers -and -not $SkipGroups -and -not $SkipRoles) {
     Write-Step "Creating test users for each CRM role (password: $TestUserPassword)"
     foreach ($testUser in $TestUsers) {

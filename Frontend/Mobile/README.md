@@ -104,8 +104,8 @@ właściwościach `partial`, `[RelayCommand]`). Strony wywołują w code-behind 
   `WebAuthenticatorBrowser`); tokeny (access, refresh, id) w `SecureStorage`.
 - **Odświeżanie** - `OidcAuthService` odświeża token na minutę przed wygaśnięciem; nieudane odświeżenie kończy sesję.
 - **Wylogowanie** - najpierw czyści lokalne tokeny, potem kończy sesję w SSO (`end_session` z `id_token_hint`,
-  powrót na `com.sdc.crm.mobile://signout`). Wymaga zarejestrowania tego adresu w kliencie `sdc-crm-mobile`
-  (patrz `Integrations/Sso/README.md`).
+  powrót na `com.sdc.crm.mobile://signout`). Adres jest rejestrowany w kliencie `sdc-crm-mobile` automatycznie
+  przez `Integrations/Sso/manage-sso.ps1 start`, także w istniejących środowiskach (patrz `Integrations/Sso/README.md`).
 - **HTTP 401** z API - sesja jest zapominana lokalnie (bez okna przeglądarki) i użytkownik wraca do logowania.
 - **HTTP 403** z API - użytkownik pozostaje zalogowany, a ekran pokazuje komunikat o braku uprawnień
   (np. rola `BackofficeUser` na liście leadów).

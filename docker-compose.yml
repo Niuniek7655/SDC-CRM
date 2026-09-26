@@ -143,11 +143,27 @@ services:
     networks:
       - dotnet-local-network
 
+  # Tempo runs as a non-root user (10001), but a fresh named volume is owned by root.
+  # This one-shot container fixes the volume ownership before Tempo starts.
+  # (The Tempo image is distroless and has no chown, hence busybox.)
+  tempo-init:
+    image: busybox:1.37
+    container_name: dotnet-tempo-init
+    user: root
+    entrypoint: ["chown", "-R", "10001:10001", "/tmp/tempo"]
+    volumes:
+      - tempo-data:/tmp/tempo
+    networks:
+      - dotnet-local-network
+
   tempo:
     image: grafana/tempo:2.10.8
     container_name: dotnet-tempo
     restart: unless-stopped
     command: ["-config.file=/etc/tempo/tempo.yaml"]
+    depends_on:
+      tempo-init:
+        condition: service_completed_successfully
     ports:
       - "3200:3200"     # Tempo HTTP API
     volumes:

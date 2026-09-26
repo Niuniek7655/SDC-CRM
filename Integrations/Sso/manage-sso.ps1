@@ -42,6 +42,15 @@ function Write-ColorMessage {
     Write-Host $Message -ForegroundColor $Color
 }
 
+function Invoke-DockerCompose {
+    # docker compose writes progress to stderr. With $ErrorActionPreference = "Stop", Windows PowerShell 5.1
+    # turns redirected stderr lines of native commands into terminating errors, so run it with "Continue"
+    # (local to this function) and rely on the exit code instead.
+    $ErrorActionPreference = "Continue"
+    docker compose @args
+    if ($LASTEXITCODE -ne 0) { throw "docker compose $($args -join ' ') failed (exit code $LASTEXITCODE)." }
+}
+
 function Wait-SsoReady {
     param([int]$TimeoutSeconds = 180)
     Write-ColorMessage "Waiting for IdServer ($DiscoveryUrl, up to $TimeoutSeconds s)..." "Yellow"
@@ -71,8 +80,7 @@ function Start-SsoEnvironment {
     Write-ColorMessage "Starting SSO environment..." "Cyan"
     Push-Location $ScriptDir
     try {
-        docker compose up -d
-        if ($LASTEXITCODE -ne 0) { throw "docker compose up failed (exit code $LASTEXITCODE)." }
+        Invoke-DockerCompose up -d
         Write-ColorMessage "Environment started." "Green"
     }
     finally {
@@ -96,7 +104,7 @@ function Stop-SsoEnvironment {
     Write-ColorMessage "Stopping SSO environment..." "Cyan"
     Push-Location $ScriptDir
     try {
-        docker compose stop
+        Invoke-DockerCompose stop
         Write-ColorMessage "Environment stopped." "Green"
     }
     finally {
@@ -109,7 +117,7 @@ function Get-SsoStatus {
     Write-ColorMessage ""
     Push-Location $ScriptDir
     try {
-        docker compose ps
+        Invoke-DockerCompose ps
         Write-ColorMessage ""
 
         # Test connections
@@ -139,7 +147,7 @@ function Get-SsoStatus {
 function Get-SsoLogs {
     Push-Location $ScriptDir
     try {
-        docker compose logs -f --tail=100
+        Invoke-DockerCompose logs -f --tail=100
     }
     finally {
         Pop-Location
@@ -152,7 +160,7 @@ function Reset-SsoEnvironment {
     if ($confirm -eq "yes") {
         Push-Location $ScriptDir
         try {
-            docker compose down -v
+            Invoke-DockerCompose down -v
             Write-ColorMessage "Data deleted." "Green"
             Write-ColorMessage "Run 'start' to initialize and provision from scratch." "Cyan"
         }

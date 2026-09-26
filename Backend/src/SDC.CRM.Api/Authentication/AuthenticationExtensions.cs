@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using SDC.CRM.Api.Observability;
 
 namespace SDC.CRM.Api.Authentication;
 
@@ -92,7 +93,9 @@ public static class AuthenticationExtensions
                 policy
                     .WithOrigins(options.AllowedCorsOrigins)
                     .AllowAnyHeader()
-                    .AllowAnyMethod();
+                    .AllowAnyMethod()
+                    // Lets browser clients read the correlation id (e.g. to show it with an error message).
+                    .WithExposedHeaders(CorrelationIdMiddleware.HeaderName);
             }
         }));
     }

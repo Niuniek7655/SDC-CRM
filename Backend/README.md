@@ -134,9 +134,24 @@ są w `appsettings.Development.json` (profil `http`/`https` w `launchSettings.js
 | `Oidc:Authority` | `http://localhost:5001/master` | `Oidc__Authority` |
 | `Oidc:RequireHttpsMetadata` | `false` | domyślnie `true` |
 | `Oidc:AllowedCorsOrigins` | `http://localhost:4200` | `Oidc__AllowedCorsOrigins__0`, `__1`, ... |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | `http://localhost:4317` (OpenTelemetry Collector) | `OTEL_EXPORTER_OTLP_ENDPOINT` (brak = telemetria nie jest wysyłana) |
 
 Brak `ConnectionStrings:Crm` lub `Oidc:Authority` zatrzymuje start aplikacji z komunikatem
 wskazującym brakujące ustawienie (fail-fast zamiast cichego użycia wartości deweloperskich).
+
+## Obserwowalność
+
+API wysyła ślady (traces), metryki i logi przez OTLP do OpenTelemetry Collector
+(stos lokalny opisany w `infra/README.md`). Kod domeny i aplikacji nie zależy od bibliotek telemetrii.
+
+- Instrumentacja: żądania HTTP (ASP.NET Core), wywołania `HttpClient`, zapytania do PostgreSQL (Npgsql)
+  oraz metryki środowiska uruchomieniowego .NET.
+- Eksport włącza ustawienie `OTEL_EXPORTER_OTLP_ENDPOINT`; bez niego (np. w testach) telemetria nie opuszcza procesu.
+- Każde żądanie otrzymuje identyfikator korelacji w nagłówku `X-Correlation-ID`. Identyfikator przesłany przez klienta
+  jest zachowywany, jeśli jest bezpieczny (do 64 znaków `A-Z a-z 0-9 - _ . :`); w przeciwnym razie nadawany jest nowy -
+  trace-id bieżącego śladu W3C, więc nagłówek, logi i ślad mają ten sam identyfikator. Identyfikator wraca w odpowiedzi
+  (także dla klientów przeglądarkowych przez CORS), trafia do scope logów (`CorrelationId`) i jako tag `correlation.id` do śladu.
+- Podgląd lokalnie: Seq `http://localhost:5341`, Jaeger `http://localhost:16686`, Grafana `http://localhost:3000`.
 
 ## Przykładowe żądanie
 

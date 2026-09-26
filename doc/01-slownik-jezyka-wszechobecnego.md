@@ -171,12 +171,12 @@ Kontekst odpowiedzialny za komunikację z zewnętrznymi systemami, np. ERP, fakt
 
 ## 6.1. Statusy leada
 
-| Status | Znaczenie |
-|---|---|
-| Nowy | Lead został utworzony i wymaga pierwszej obsługi. |
-| W kontakcie | Handlowiec rozpoczął kontakt z klientem. |
-| Zakwalifikowany | Lead nadaje się do prowadzenia jako szansa sprzedaży. |
-| Odrzucony | Lead nie będzie dalej obsługiwany. |
+| Status | Kod w systemie | Znaczenie |
+|---|---|---|
+| Nowy | `New` | Lead został utworzony i wymaga pierwszej obsługi. |
+| W kontakcie | `InContact` — niezaimplementowany, do decyzji (Q-03) | Handlowiec rozpoczął kontakt z klientem. |
+| Zakwalifikowany | `Qualified` | Lead nadaje się do prowadzenia jako szansa sprzedaży. |
+| Odrzucony | `Rejected` | Lead nie będzie dalej obsługiwany. |
 
 ## 6.2. Etapy szansy sprzedaży
 
@@ -191,18 +191,21 @@ Kontekst odpowiedzialny za komunikację z zewnętrznymi systemami, np. ERP, fakt
 
 ## 6.3. Statusy zamówienia
 
-| Status | Znaczenie |
-|---|---|
-| Robocze | Zamówienie jest przygotowywane przez handlowca. |
-| Przekazane do backoffice | Zamówienie zostało wysłane do obsługi. |
-| Nowe w backoffice | Zamówienie czeka w kolejce. |
-| W weryfikacji | Backoffice sprawdza dane zamówienia. |
-| W realizacji | Zamówienie jest realizowane. |
-| Oczekuje na informacje | Potrzebne są dodatkowe informacje. |
-| Zablokowane | Realizacja nie może być kontynuowana. |
-| Zwrócone do handlowca | Handlowiec musi uzupełnić dane. |
-| Zrealizowane | Zamówienie zostało zakończone. |
-| Anulowane | Zamówienie nie będzie realizowane. |
+Status widoczny dla użytkownika łączy dwa cykle życia: zamówienia handlowca (`SalesOrder`) i sprawy backoffice
+(`BackofficeOrderCase`). Dozwolone przejścia: [order_status_lifecycle.md](crm_ddd_ai_agent_package/ai_readable/order_status_lifecycle.md).
+
+| Status | Właściciel | Kod w systemie | Znaczenie |
+|---|---|---|---|
+| Robocze | `SalesOrder` | `Draft` | Zamówienie jest przygotowywane przez handlowca. |
+| Przekazane do backoffice | `SalesOrder` | `SubmittedToBackoffice` | Zamówienie zostało wysłane do obsługi. |
+| Nowe w backoffice | `BackofficeOrderCase` | `New` | Zamówienie czeka w kolejce. |
+| W weryfikacji | `BackofficeOrderCase` | `InVerification` | Backoffice sprawdza dane zamówienia. |
+| W realizacji | `BackofficeOrderCase` | `InFulfillment` | Zamówienie jest realizowane. |
+| Oczekuje na informacje | `BackofficeOrderCase` | `AwaitingInformation` | Potrzebne są dodatkowe informacje. |
+| Zablokowane | `BackofficeOrderCase` | `Blocked` | Realizacja nie może być kontynuowana. Wymaga powodu blokady. |
+| Zwrócone do handlowca | `BackofficeOrderCase`, `SalesOrder` | `ReturnedToSales` | Handlowiec musi uzupełnić dane. Wymaga komentarza. |
+| Zrealizowane | `BackofficeOrderCase` | `Completed` | Zamówienie zostało zakończone. Ma datę zakończenia. |
+| Anulowane | `BackofficeOrderCase` | `Cancelled` | Zamówienie nie będzie realizowane. Kto może anulować — do decyzji (Q-07). |
 
 ---
 
@@ -213,11 +216,15 @@ Kontekst odpowiedzialny za komunikację z zewnętrznymi systemami, np. ERP, fakt
 | Customer | Customer Management | Pilnuje danych klienta i osób kontaktowych. |
 | Lead | Sales Pipeline | Pilnuje życia leada od utworzenia do kwalifikacji lub odrzucenia. |
 | Opportunity | Sales Pipeline | Pilnuje etapów sprzedaży, wartości, wygranej i przegranej. |
-| SalesActivity | Sales Activities | Reprezentuje kontakt, notatkę lub zadanie. |
+| SalesActivity | Sales Activities | Reprezentuje kontakt, notatkę (`SalesNote`) lub zaplanowany kontakt (`FollowUp`). |
 | SalesOrder | Order Capture | Pilnuje kompletności zamówienia przed przekazaniem do backoffice. |
 | BackofficeOrderCase | Order Backoffice | Pilnuje obsługi zamówienia, statusów, przypisania i zamknięcia. |
 | User | Identity & Access | Reprezentuje użytkownika systemu. |
 | Role | Identity & Access | Reprezentuje poziom uprawnień użytkownika. |
+
+`User` i `Role` nie są agregatami przechowywanymi w CRM: konta i role utrzymuje dostawca tożsamości (SSO, SimpleIdServer),
+a backend odczytuje je z tokena (Q-12). Pełny model agregatów, encji i value objectów:
+[bounded_contexts_and_aggregates.md](crm_ddd_ai_agent_package/ai_readable/bounded_contexts_and_aggregates.md).
 
 ---
 
@@ -227,7 +234,7 @@ Kontekst odpowiedzialny za komunikację z zewnętrznymi systemami, np. ERP, fakt
 |---|---|
 | CustomerCreated | Utworzono klienta. |
 | ContactPersonAdded | Dodano osobę kontaktową. |
-| LeadCreated | Utworzono lead. |
+| LeadRegistered | Zarejestrowano lead. |
 | LeadAssigned | Przypisano lead do handlowca. |
 | LeadQualified | Lead został zakwalifikowany. |
 | LeadRejected | Lead został odrzucony. |
@@ -238,11 +245,20 @@ Kontekst odpowiedzialny za komunikację z zewnętrznymi systemami, np. ERP, fakt
 | SalesActivityLogged | Zarejestrowano aktywność sprzedażową. |
 | SalesNoteAdded | Dodano notatkę. |
 | FollowUpScheduled | Zaplanowano kolejny kontakt. |
+| FollowUpCompleted | Oznaczono follow-up jako wykonany. |
 | SalesOrderCreated | Utworzono zamówienie. |
-| OrderSubmittedToBackoffice | Zamówienie przekazano do backoffice. |
+| SalesOrderSubmittedToBackoffice | Zamówienie przekazano do backoffice. |
+| BackofficeOrderCaseOpened | Utworzono lub wznowiono sprawę backoffice dla przekazanego zamówienia. |
 | BackofficeOrderAssigned | Zamówienie przypisano do pracownika backoffice. |
 | BackofficeOrderStatusChanged | Zmieniono status obsługi zamówienia. |
-| OrderReturnedToSales | Zamówienie zwrócono do handlowca. |
-| OrderBlocked | Zamówienie zostało zablokowane. |
-| OrderCompleted | Zamówienie zostało zrealizowane. |
-| OrderCancelled | Zamówienie zostało anulowane. |
+| BackofficeOrderBlocked | Zamówienie zostało zablokowane. |
+| BackofficeCommentAdded | Dodano komentarz backoffice. |
+| BackofficeOrderReturnedToSales | Zamówienie zwrócono do handlowca. |
+| BackofficeOrderCompleted | Zamówienie zostało zrealizowane. |
+| BackofficeOrderCancelled | Zamówienie zostało anulowane (do decyzji — Q-07). |
+| IntegrationJobSucceeded | Przekazanie danych do systemu zewnętrznego zakończyło się sukcesem. |
+| IntegrationJobFailed | Przekazanie danych do systemu zewnętrznego nie powiodło się. |
+
+Zdarzenia przekazywane między kontekstami mają sufiks `IntegrationEvent` (np. `SalesOrderSubmittedIntegrationEvent`).
+Katalog zdarzeń z nadawcami, odbiorcami i audytem:
+[events_catalog.md](crm_ddd_ai_agent_package/ai_readable/events_catalog.md).

@@ -1,0 +1,98 @@
+{
+  "schema_version": 2,
+  "updated": "2026-09-26",
+  "description": "Katalog zdarzeń domenowych i integracyjnych CRM. Odpowiednik events_catalog.md.",
+  "conventions": {
+    "domain_event": "<Agregat lub obszar><czasownik w czasie przeszłym>; rejestrowane przez agregat",
+    "integration_event": "<fakt>IntegrationEvent; publikowane przez warstwę aplikacji po zapisie (docelowo outbox)"
+  },
+  "publication_state": "Zdarzenia są rejestrowane w Entity.DomainEvents, ale nie są publikowane — brak dispatchera i brokera (T-02).",
+  "domain_events": [
+    { "name": "CustomerCreated", "context": "Customer Management", "aggregate": "Customer", "raised_by": ["CreateCustomer"], "payload": ["CustomerId", "CustomerName", "TaxIdentifier"], "audited": false, "status": "planned", "backlog": ["CRM-007"], "code": null },
+    { "name": "ContactPersonAdded", "context": "Customer Management", "aggregate": "Customer", "raised_by": ["AddContactPerson"], "payload": ["CustomerId", "ContactPersonId", "IsPrimary"], "audited": false, "status": "planned", "backlog": ["CRM-008"], "code": null },
+    { "name": "LeadRegistered", "context": "Sales Pipeline", "aggregate": "Lead", "raised_by": ["RegisterLead"], "payload": ["LeadId", "CompanyName", "AssignedSalespersonId", "OccurredOnUtc"], "audited": false, "status": "implemented", "backlog": ["CRM-001"], "code": "Backend/src/SDC.CRM.Domain/Leads/Events/LeadRegistered.cs" },
+    { "name": "LeadAssigned", "context": "Sales Pipeline", "aggregate": "Lead", "raised_by": ["AssignLeadToSalesperson"], "payload": ["LeadId", "PreviousSalespersonId", "NewSalespersonId", "AssignedBy"], "audited": true, "status": "planned", "backlog": ["CRM-004"], "code": null },
+    { "name": "LeadQualified", "context": "Sales Pipeline", "aggregate": "Lead", "raised_by": ["QualifyLead"], "payload": ["LeadId", "OccurredOnUtc"], "audited": false, "status": "partial", "backlog": ["CRM-005"], "code": "Backend/src/SDC.CRM.Domain/Leads/Events/LeadQualified.cs" },
+    { "name": "LeadRejected", "context": "Sales Pipeline", "aggregate": "Lead", "raised_by": ["RejectLead"], "payload": ["LeadId", "Reason", "OccurredOnUtc"], "audited": true, "status": "partial", "backlog": ["CRM-006"], "code": "Backend/src/SDC.CRM.Domain/Leads/Events/LeadRejected.cs" },
+    { "name": "OpportunityCreated", "context": "Sales Pipeline", "aggregate": "Opportunity", "raised_by": ["CreateOpportunityFromLead"], "payload": ["OpportunityId", "LeadId", "CustomerId", "OwnerId", "PipelineStage"], "audited": false, "status": "planned", "backlog": ["CRM-005", "CRM-014"], "code": null },
+    { "name": "OpportunityStageChanged", "context": "Sales Pipeline", "aggregate": "Opportunity", "raised_by": ["ChangeOpportunityStage"], "payload": ["OpportunityId", "FromStage", "ToStage", "ChangedBy"], "audited": true, "status": "planned", "backlog": ["CRM-015"], "code": null },
+    { "name": "OpportunityWon", "context": "Sales Pipeline", "aggregate": "Opportunity", "raised_by": ["WinOpportunity"], "payload": ["OpportunityId", "CustomerId", "Value"], "audited": true, "status": "planned", "backlog": ["CRM-016"], "code": null },
+    { "name": "OpportunityLost", "context": "Sales Pipeline", "aggregate": "Opportunity", "raised_by": ["LoseOpportunity"], "payload": ["OpportunityId", "LostReason"], "audited": true, "status": "planned", "backlog": ["CRM-017"], "code": null },
+    { "name": "SalesActivityLogged", "context": "Sales Activities", "aggregate": "SalesActivity", "raised_by": ["LogSalesActivity"], "payload": ["SalesActivityId", "ContactChannel", "RelatedTo", "OccurredAt", "AuthorId"], "audited": false, "status": "planned", "backlog": ["CRM-011"], "code": null },
+    { "name": "SalesNoteAdded", "context": "Sales Activities", "aggregate": "SalesActivity", "raised_by": ["AddSalesNote"], "payload": ["SalesActivityId", "RelatedTo", "AuthorId"], "audited": false, "status": "planned", "backlog": ["CRM-010"], "code": null },
+    { "name": "FollowUpScheduled", "context": "Sales Activities", "aggregate": "SalesActivity", "raised_by": ["ScheduleFollowUp"], "payload": ["SalesActivityId", "RelatedTo", "DueDate", "OwnerId"], "audited": false, "status": "planned", "backlog": ["CRM-012"], "code": null },
+    { "name": "FollowUpCompleted", "context": "Sales Activities", "aggregate": "SalesActivity", "raised_by": ["CompleteFollowUp"], "payload": ["SalesActivityId", "CompletedAt"], "audited": false, "status": "planned", "backlog": ["CRM-013"], "code": null },
+    { "name": "SalesOrderCreated", "context": "Order Capture", "aggregate": "SalesOrder", "raised_by": ["CreateOrderFromOpportunity"], "payload": ["SalesOrderId", "OpportunityId", "CustomerId", "OwnerId"], "audited": false, "status": "planned", "backlog": ["CRM-018"], "code": null },
+    { "name": "SalesOrderSubmittedToBackoffice", "context": "Order Capture", "aggregate": "SalesOrder", "raised_by": ["SubmitOrderToBackoffice"], "payload": ["SalesOrderId", "SubmissionNumber", "SubmittedBy"], "audited": true, "status": "planned", "backlog": ["CRM-020", "CRM-026"], "code": null },
+    { "name": "BackofficeOrderCaseOpened", "context": "Order Backoffice", "aggregate": "BackofficeOrderCase", "raised_by": ["OpenBackofficeOrderCase"], "payload": ["BackofficeOrderCaseId", "SalesOrderId"], "audited": false, "status": "planned", "backlog": ["CRM-020", "CRM-022"], "code": null },
+    { "name": "BackofficeOrderAssigned", "context": "Order Backoffice", "aggregate": "BackofficeOrderCase", "raised_by": ["AssignBackofficeOrder"], "payload": ["BackofficeOrderCaseId", "AssigneeId", "AssignedBy"], "audited": true, "status": "planned", "backlog": ["CRM-023"], "code": null },
+    { "name": "BackofficeOrderStatusChanged", "context": "Order Backoffice", "aggregate": "BackofficeOrderCase", "raised_by": ["ChangeBackofficeOrderStatus"], "payload": ["BackofficeOrderCaseId", "FromStatus", "ToStatus", "ChangedBy"], "audited": true, "status": "planned", "backlog": ["CRM-024"], "code": null },
+    { "name": "BackofficeOrderBlocked", "context": "Order Backoffice", "aggregate": "BackofficeOrderCase", "raised_by": ["ChangeBackofficeOrderStatus"], "payload": ["BackofficeOrderCaseId", "BlockingReason", "BlockedBy"], "audited": true, "status": "planned", "backlog": ["CRM-024"], "code": null },
+    { "name": "BackofficeCommentAdded", "context": "Order Backoffice", "aggregate": "BackofficeOrderCase", "raised_by": ["AddBackofficeComment"], "payload": ["BackofficeOrderCaseId", "CommentId", "Visibility", "AuthorId"], "audited": false, "status": "planned", "backlog": ["CRM-025"], "code": null },
+    { "name": "BackofficeOrderReturnedToSales", "context": "Order Backoffice", "aggregate": "BackofficeOrderCase", "raised_by": ["ReturnOrderToSales"], "payload": ["BackofficeOrderCaseId", "SalesOrderId", "Comment", "ReturnedBy"], "audited": true, "status": "planned", "backlog": ["CRM-026"], "code": null },
+    { "name": "BackofficeOrderCompleted", "context": "Order Backoffice", "aggregate": "BackofficeOrderCase", "raised_by": ["CompleteOrder"], "payload": ["BackofficeOrderCaseId", "SalesOrderId", "CompletionDate", "CompletedBy"], "audited": true, "status": "planned", "backlog": ["CRM-027"], "code": null },
+    { "name": "BackofficeOrderCancelled", "context": "Order Backoffice", "aggregate": "BackofficeOrderCase", "raised_by": ["CancelOrder"], "payload": ["BackofficeOrderCaseId", "SalesOrderId", "CancellationReason", "CancelledBy"], "audited": true, "status": "decision_needed", "backlog": [], "code": null },
+    { "name": "IntegrationJobSucceeded", "context": "Integrations", "aggregate": "IntegrationJob", "raised_by": ["ExportOrderToErp", "RetryIntegrationJob"], "payload": ["IntegrationJobId", "ExternalSystemName", "ExternalId"], "audited": false, "status": "planned", "backlog": ["CRM-038"], "code": null },
+    { "name": "IntegrationJobFailed", "context": "Integrations", "aggregate": "IntegrationJob", "raised_by": ["ExportOrderToErp", "RetryIntegrationJob"], "payload": ["IntegrationJobId", "ExternalSystemName", "AttemptNumber", "ErrorCode"], "audited": false, "status": "planned", "backlog": ["CRM-038"], "code": null }
+  ],
+  "integration_events": [
+    {
+      "name": "SalesOrderSubmittedIntegrationEvent",
+      "source_event": "SalesOrderSubmittedToBackoffice",
+      "publisher_context": "Order Capture",
+      "payload": ["SalesOrderId", "SubmissionNumber", "OrderCustomerSnapshot", "OrderLines", "SubmittedBy", "CorrelationId"],
+      "subscribers": [
+        { "context": "Order Backoffice", "reaction": "OpenBackofficeOrderCase albo wznowienie istniejącej sprawy (Q-08)" },
+        { "context": "Reporting & KPI", "reaction": "projekcje" }
+      ],
+      "status": "planned",
+      "open_questions": ["Q-08"]
+    },
+    {
+      "name": "BackofficeOrderReturnedToSalesIntegrationEvent",
+      "source_event": "BackofficeOrderReturnedToSales",
+      "publisher_context": "Order Backoffice",
+      "payload": ["BackofficeOrderCaseId", "SalesOrderId", "Comment", "ReturnedBy", "CorrelationId"],
+      "subscribers": [
+        { "context": "Order Capture", "reaction": "ReopenSalesOrderAfterReturn" },
+        { "context": "Reporting & KPI", "reaction": "projekcje" },
+        { "context": "Sales Activities", "reaction": "FollowUp dla handlowca tylko po decyzji Q-09" }
+      ],
+      "status": "planned",
+      "open_questions": ["Q-09"]
+    },
+    {
+      "name": "BackofficeOrderCompletedIntegrationEvent",
+      "source_event": "BackofficeOrderCompleted",
+      "publisher_context": "Order Backoffice",
+      "payload": ["BackofficeOrderCaseId", "SalesOrderId", "CompletionDate", "CorrelationId"],
+      "subscribers": [
+        { "context": "Integrations", "reaction": "ExportOrderToErp (Could Have, Q-10)" },
+        { "context": "Reporting & KPI", "reaction": "projekcje" }
+      ],
+      "status": "planned",
+      "open_questions": ["Q-10"]
+    },
+    {
+      "name": "BackofficeOrderCancelledIntegrationEvent",
+      "source_event": "BackofficeOrderCancelled",
+      "publisher_context": "Order Backoffice",
+      "payload": ["BackofficeOrderCaseId", "SalesOrderId", "CancellationReason", "CorrelationId"],
+      "subscribers": [
+        { "context": "Order Capture", "reaction": "do decyzji (Q-07)" },
+        { "context": "Reporting & KPI", "reaction": "projekcje" }
+      ],
+      "status": "decision_needed",
+      "open_questions": ["Q-07"]
+    }
+  ],
+  "read_model_feeds": [
+    { "read_model": "SalespersonDashboard", "context": "Reporting & KPI", "backlog": ["CRM-031"], "status": "planned", "events": ["LeadRegistered", "LeadAssigned", "LeadQualified", "LeadRejected", "OpportunityCreated", "OpportunityWon", "OpportunityLost", "FollowUpScheduled", "FollowUpCompleted", "SalesOrderSubmittedToBackoffice", "BackofficeOrderReturnedToSales"] },
+    { "read_model": "SalesManagerDashboard", "context": "Reporting & KPI", "backlog": ["CRM-032"], "status": "planned", "events": ["OpportunityCreated", "OpportunityStageChanged", "OpportunityWon", "OpportunityLost", "SalesActivityLogged", "SalesNoteAdded", "FollowUpCompleted"] },
+    { "read_model": "BackofficeReport", "context": "Reporting & KPI", "backlog": ["CRM-033"], "status": "planned", "events": ["BackofficeOrderCaseOpened", "BackofficeOrderAssigned", "BackofficeOrderStatusChanged", "BackofficeOrderBlocked", "BackofficeOrderReturnedToSales", "BackofficeOrderCompleted"] },
+    { "read_model": "Customer360", "context": "Customer Management", "backlog": ["CRM-009"], "status": "planned", "events": ["CustomerCreated", "ContactPersonAdded", "LeadRegistered", "OpportunityCreated", "OpportunityWon", "OpportunityLost", "SalesActivityLogged", "SalesNoteAdded", "SalesOrderCreated", "BackofficeOrderCompleted"] },
+    { "read_model": "SalesOrderStatus", "context": "Order Capture", "backlog": ["CRM-021"], "status": "planned", "events": ["SalesOrderCreated", "SalesOrderSubmittedToBackoffice", "BackofficeOrderCaseOpened", "BackofficeOrderStatusChanged", "BackofficeOrderBlocked", "BackofficeCommentAdded", "BackofficeOrderReturnedToSales", "BackofficeOrderCompleted"] },
+    { "read_model": "AuditLog", "context": "Identity & Access", "backlog": ["CRM-030"], "status": "planned", "events": ["LeadAssigned", "LeadRejected", "OpportunityStageChanged", "OpportunityWon", "OpportunityLost", "SalesOrderSubmittedToBackoffice", "BackofficeOrderAssigned", "BackofficeOrderStatusChanged", "BackofficeOrderBlocked", "BackofficeOrderReturnedToSales", "BackofficeOrderCompleted", "BackofficeOrderCancelled"] }
+  ]
+}
+

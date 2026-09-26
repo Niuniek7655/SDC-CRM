@@ -1,0 +1,188 @@
+{
+  "schema_version": 2,
+  "updated": "2026-09-26",
+  "description": "Procesy biznesowe CRM jako grafy kroków. Każdy krok ma ten sam zestaw pól; przejścia w polu next. Odpowiednik plików process_*.md.",
+  "step_types": {
+    "start": "początek procesu",
+    "command": "komenda wykonywana przez użytkownika",
+    "policy": "automatyczna reakcja na zdarzenie (trigger)",
+    "query": "zapytanie / widok",
+    "decision": "rozgałęzienie; warunek w next[].when",
+    "action": "krok bez komendy domenowej (UI, system, ACL)",
+    "external": "system zewnętrzny",
+    "end": "koniec procesu"
+  },
+  "processes": [
+    {
+      "id": "process_01_lead_pipeline",
+      "title": "Proces 1 — Obsługa leada i pipeline sprzedażowego",
+      "document": "ai_readable/processes/process_01_lead_pipeline.md",
+      "diagram": "diagrams/png/02_process_01_lead_pipeline.png",
+      "bounded_contexts": ["Sales Pipeline", "Sales Activities", "Customer Management", "Reporting & KPI"],
+      "aggregates": ["Lead", "Opportunity", "SalesActivity"],
+      "backlog": ["CRM-001", "CRM-002", "CRM-004", "CRM-005", "CRM-006", "CRM-010", "CRM-011", "CRM-012", "CRM-014", "CRM-015", "CRM-016", "CRM-017", "CRM-018"],
+      "open_questions": ["Q-01", "Q-02", "Q-03", "Q-13", "Q-18", "Q-19"],
+      "read_models": [
+        { "name": "GetMyLeadsQuery", "status": "implemented", "backlog": ["CRM-002"], "note": "Moje leady — zapytanie bezpośrednie" },
+        { "name": "SalespersonDashboard", "status": "planned", "backlog": ["CRM-031"], "note": null },
+        { "name": "SalesManagerDashboard", "status": "planned", "backlog": ["CRM-032"], "note": null }
+      ],
+      "steps": [
+        { "id": "S1", "type": "start", "name": "Handlowiec ma nowy temat sprzedażowy (źródło: telefon, formularz, polecenie, kampania, targi)", "actor": "Salesperson", "context": "Sales Pipeline", "aggregate": null, "commands": [], "queries": [], "emits": [], "publishes": [], "trigger": null, "sync_calls": [], "status": null, "backlog": [], "open_questions": [], "next": [{ "to": "S2", "when": null }] },
+        { "id": "S2", "type": "command", "name": "Rejestracja leada z minimalnymi danymi klienta i osoby kontaktowej; właściciel z tokena", "actor": "Salesperson", "context": "Sales Pipeline", "aggregate": "Lead", "commands": ["RegisterLead"], "queries": [], "emits": ["LeadRegistered"], "publishes": [], "trigger": null, "sync_calls": [], "status": "implemented", "backlog": ["CRM-001"], "open_questions": [], "next": [{ "to": "S3", "when": "opcjonalnie: menedżer zmienia właściciela" }, { "to": "S4", "when": null }] },
+        { "id": "S3", "type": "command", "name": "Menedżer zmienia właściciela leada", "actor": "SalesManager", "context": "Sales Pipeline", "aggregate": "Lead", "commands": ["AssignLeadToSalesperson"], "queries": [], "emits": ["LeadAssigned"], "publishes": [], "trigger": null, "sync_calls": [], "status": "planned", "backlog": ["CRM-004"], "open_questions": ["Q-13"], "next": [{ "to": "S4", "when": null }] },
+        { "id": "S4", "type": "command", "name": "Pierwszy kontakt i notatka (proces 3)", "actor": "Salesperson", "context": "Sales Activities", "aggregate": "SalesActivity", "commands": ["LogSalesActivity", "AddSalesNote"], "queries": [], "emits": ["SalesActivityLogged", "SalesNoteAdded"], "publishes": [], "trigger": null, "sync_calls": [], "status": "planned", "backlog": ["CRM-010", "CRM-011"], "open_questions": [], "next": [{ "to": "S5", "when": null }] },
+        { "id": "S5", "type": "decision", "name": "Czy lead jest wart dalszej pracy?", "actor": "Salesperson", "context": "Sales Pipeline", "aggregate": null, "commands": [], "queries": [], "emits": [], "publishes": [], "trigger": null, "sync_calls": [], "status": null, "backlog": [], "open_questions": [], "next": [{ "to": "S6", "when": "nie" }, { "to": "S7", "when": "tak" }] },
+        { "id": "S6", "type": "command", "name": "Odrzucenie leada z podaniem powodu", "actor": "Salesperson", "context": "Sales Pipeline", "aggregate": "Lead", "commands": ["RejectLead"], "queries": [], "emits": ["LeadRejected"], "publishes": [], "trigger": null, "sync_calls": [], "status": "partial", "backlog": ["CRM-006"], "open_questions": [], "next": [] },
+        { "id": "S7", "type": "command", "name": "Kwalifikacja leada (odrzuconego nie można zakwalifikować)", "actor": "Salesperson", "context": "Sales Pipeline", "aggregate": "Lead", "commands": ["QualifyLead"], "queries": [], "emits": ["LeadQualified"], "publishes": [], "trigger": null, "sync_calls": [], "status": "partial", "backlog": ["CRM-005"], "open_questions": [], "next": [{ "to": "S8", "when": null }] },
+        { "id": "S8", "type": "policy", "name": "Po LeadQualified utwórz szansę sprzedaży", "actor": null, "context": "Sales Pipeline", "aggregate": null, "commands": [], "queries": [], "emits": [], "publishes": [], "trigger": "LeadQualified", "sync_calls": [], "status": "planned", "backlog": ["CRM-005"], "open_questions": [], "next": [{ "to": "S9", "when": null }] },
+        { "id": "S9", "type": "command", "name": "Utworzenie szansy: powiązanie z leadem i klientem, pierwszy etap Nowa szansa", "actor": "Salesperson", "context": "Sales Pipeline", "aggregate": "Opportunity", "commands": ["CreateOpportunityFromLead"], "queries": [], "emits": ["OpportunityCreated"], "publishes": [], "trigger": null, "sync_calls": [], "status": "planned", "backlog": ["CRM-014"], "open_questions": ["Q-01"], "next": [{ "to": "S10", "when": null }] },
+        { "id": "S10", "type": "command", "name": "Zmiana etapu pipeline; każda zmiana w historii", "actor": "Salesperson", "context": "Sales Pipeline", "aggregate": "Opportunity", "commands": ["ChangeOpportunityStage"], "queries": [], "emits": ["OpportunityStageChanged"], "publishes": [], "trigger": null, "sync_calls": [], "status": "planned", "backlog": ["CRM-015"], "open_questions": ["Q-19"], "next": [{ "to": "S11", "when": null }] },
+        { "id": "S11", "type": "command", "name": "Zaplanowanie kolejnego kontaktu (proces 3)", "actor": "Salesperson", "context": "Sales Activities", "aggregate": "SalesActivity", "commands": ["ScheduleFollowUp"], "queries": [], "emits": ["FollowUpScheduled"], "publishes": [], "trigger": null, "sync_calls": [], "status": "planned", "backlog": ["CRM-012"], "open_questions": [], "next": [{ "to": "S12", "when": null }] },
+        { "id": "S12", "type": "decision", "name": "Wynik sprzedaży: w toku, przegrana czy wygrana?", "actor": "Salesperson", "context": "Sales Pipeline", "aggregate": null, "commands": [], "queries": [], "emits": [], "publishes": [], "trigger": null, "sync_calls": [], "status": null, "backlog": [], "open_questions": [], "next": [{ "to": "S10", "when": "w toku" }, { "to": "S13", "when": "przegrana" }, { "to": "S14", "when": "wygrana" }] },
+        { "id": "S13", "type": "command", "name": "Przegrana z powodem (LostReason)", "actor": "Salesperson", "context": "Sales Pipeline", "aggregate": "Opportunity", "commands": ["LoseOpportunity"], "queries": [], "emits": ["OpportunityLost"], "publishes": [], "trigger": null, "sync_calls": [], "status": "planned", "backlog": ["CRM-017"], "open_questions": [], "next": [] },
+        { "id": "S14", "type": "command", "name": "Wygrana szansa", "actor": "Salesperson", "context": "Sales Pipeline", "aggregate": "Opportunity", "commands": ["WinOpportunity"], "queries": [], "emits": ["OpportunityWon"], "publishes": [], "trigger": null, "sync_calls": [], "status": "planned", "backlog": ["CRM-016"], "open_questions": ["Q-18"], "next": [{ "to": "S15", "when": null }] },
+        { "id": "S15", "type": "end", "name": "Handlowiec może utworzyć zamówienie (proces 4)", "actor": "Salesperson", "context": "Order Capture", "aggregate": null, "commands": [], "queries": [], "emits": [], "publishes": [], "trigger": null, "sync_calls": [], "status": null, "backlog": ["CRM-018"], "open_questions": [], "next": [] }
+      ]
+    },
+    {
+      "id": "process_02_customer_management",
+      "title": "Proces 2 — Zarządzanie klientem",
+      "document": "ai_readable/processes/process_02_customer_management.md",
+      "diagram": "diagrams/png/03_process_02_customer_management.png",
+      "bounded_contexts": ["Customer Management", "Sales Pipeline", "Order Capture", "Reporting & KPI"],
+      "aggregates": ["Customer"],
+      "backlog": ["CRM-001", "CRM-007", "CRM-008", "CRM-009"],
+      "open_questions": ["Q-01", "Q-02", "Q-13"],
+      "read_models": [
+        { "name": "GetCustomer360Query", "status": "planned", "backlog": ["CRM-009"], "note": "Customer 360" }
+      ],
+      "steps": [
+        { "id": "S1", "type": "start", "name": "Handlowiec ma dane klienta: wprowadza je ręcznie albo przy kwalifikacji leada", "actor": "Salesperson", "context": "Customer Management", "aggregate": null, "commands": [], "queries": [], "emits": [], "publishes": [], "trigger": null, "sync_calls": [], "status": null, "backlog": ["CRM-007"], "open_questions": ["Q-01"], "next": [{ "to": "S2", "when": null }] },
+        { "id": "S2", "type": "action", "name": "System ostrzega o potencjalnym duplikacie", "actor": null, "context": "Customer Management", "aggregate": "Customer", "commands": [], "queries": [], "emits": [], "publishes": [], "trigger": null, "sync_calls": [], "status": "planned", "backlog": ["CRM-001", "CRM-007"], "open_questions": ["Q-02"], "next": [{ "to": "S3", "when": null }] },
+        { "id": "S3", "type": "decision", "name": "Czy klient już istnieje?", "actor": "Salesperson", "context": "Customer Management", "aggregate": null, "commands": [], "queries": [], "emits": [], "publishes": [], "trigger": null, "sync_calls": [], "status": null, "backlog": [], "open_questions": [], "next": [{ "to": "S4", "when": "tak" }, { "to": "S5", "when": "nie" }] },
+        { "id": "S4", "type": "action", "name": "Użycie istniejącego klienta — powiązanie przez CustomerId, bez nadpisywania jego danych", "actor": "Salesperson", "context": "Customer Management", "aggregate": null, "commands": [], "queries": [], "emits": [], "publishes": [], "trigger": null, "sync_calls": [], "status": "planned", "backlog": ["CRM-007"], "open_questions": [], "next": [{ "to": "S6", "when": "nowa osoba kontaktowa" }, { "to": "S7", "when": null }] },
+        { "id": "S5", "type": "command", "name": "Utworzenie karty klienta: nazwa, telefon, e-mail, opcjonalnie NIP", "actor": "Salesperson", "context": "Customer Management", "aggregate": "Customer", "commands": ["CreateCustomer"], "queries": [], "emits": ["CustomerCreated"], "publishes": [], "trigger": null, "sync_calls": [], "status": "planned", "backlog": ["CRM-007"], "open_questions": [], "next": [{ "to": "S6", "when": null }] },
+        { "id": "S6", "type": "command", "name": "Dodanie osoby kontaktowej (wiele osób, jedna może być główna)", "actor": "Salesperson", "context": "Customer Management", "aggregate": "Customer", "commands": ["AddContactPerson"], "queries": [], "emits": ["ContactPersonAdded"], "publishes": [], "trigger": null, "sync_calls": [], "status": "planned", "backlog": ["CRM-008"], "open_questions": [], "next": [{ "to": "S7", "when": null }] },
+        { "id": "S7", "type": "end", "name": "Klient dostępny w procesach: CustomerId w szansie (proces 1), snapshot w zamówieniu (proces 4)", "actor": null, "context": "Customer Management", "aggregate": null, "commands": [], "queries": [], "emits": [], "publishes": [], "trigger": null, "sync_calls": [], "status": null, "backlog": ["CRM-009"], "open_questions": [], "next": [] }
+      ]
+    },
+    {
+      "id": "process_03_sales_activity",
+      "title": "Proces 3 — Planowanie i rejestracja aktywności handlowca",
+      "document": "ai_readable/processes/process_03_sales_activity.md",
+      "diagram": "diagrams/png/04_process_03_sales_activity.png",
+      "bounded_contexts": ["Sales Activities", "Sales Pipeline", "Customer Management", "Reporting & KPI"],
+      "aggregates": ["SalesActivity"],
+      "backlog": ["CRM-010", "CRM-011", "CRM-012", "CRM-013"],
+      "open_questions": ["Q-09", "Q-16", "Q-17"],
+      "read_models": [
+        { "name": "GetMyFollowUpsQuery", "status": "planned", "backlog": ["CRM-013"], "note": "Moje zadania" },
+        { "name": "SalespersonDashboard", "status": "planned", "backlog": ["CRM-031"], "note": null },
+        { "name": "SalesManagerDashboard", "status": "planned", "backlog": ["CRM-032"], "note": null },
+        { "name": "GetLeadDetailsQuery", "status": "planned", "backlog": ["CRM-003"], "note": "historia aktywności leada" },
+        { "name": "GetCustomer360Query", "status": "planned", "backlog": ["CRM-009"], "note": "historia aktywności klienta" }
+      ],
+      "steps": [
+        { "id": "S1", "type": "start", "name": "Handlowiec wybiera klienta, leada albo szansę (RelatedTo)", "actor": "Salesperson", "context": "Sales Activities", "aggregate": null, "commands": [], "queries": [], "emits": [], "publishes": [], "trigger": null, "sync_calls": [], "status": null, "backlog": [], "open_questions": [], "next": [{ "to": "S2", "when": null }] },
+        { "id": "S2", "type": "decision", "name": "Co rejestruje: kontakt, notatkę czy kolejny kontakt?", "actor": "Salesperson", "context": "Sales Activities", "aggregate": null, "commands": [], "queries": [], "emits": [], "publishes": [], "trigger": null, "sync_calls": [], "status": null, "backlog": [], "open_questions": [], "next": [{ "to": "S3", "when": "kontakt" }, { "to": "S4", "when": "notatka" }, { "to": "S5", "when": "kolejny kontakt" }] },
+        { "id": "S3", "type": "command", "name": "Rejestracja kontaktu: typ (telefon, e-mail, spotkanie, inny), data, autor, opcjonalnie notatka", "actor": "Salesperson", "context": "Sales Activities", "aggregate": "SalesActivity", "commands": ["LogSalesActivity"], "queries": [], "emits": ["SalesActivityLogged"], "publishes": [], "trigger": null, "sync_calls": [], "status": "planned", "backlog": ["CRM-011"], "open_questions": [], "next": [{ "to": "S8", "when": null }] },
+        { "id": "S4", "type": "command", "name": "Dodanie notatki: treść, autor, data", "actor": "Salesperson", "context": "Sales Activities", "aggregate": "SalesActivity", "commands": ["AddSalesNote"], "queries": [], "emits": ["SalesNoteAdded"], "publishes": [], "trigger": null, "sync_calls": [], "status": "planned", "backlog": ["CRM-010"], "open_questions": ["Q-17"], "next": [{ "to": "S10", "when": null }] },
+        { "id": "S5", "type": "command", "name": "Zaplanowanie follow-upu: termin, opis, właściciel", "actor": "Salesperson", "context": "Sales Activities", "aggregate": "SalesActivity", "commands": ["ScheduleFollowUp"], "queries": [], "emits": ["FollowUpScheduled"], "publishes": [], "trigger": null, "sync_calls": [], "status": "planned", "backlog": ["CRM-012"], "open_questions": [], "next": [{ "to": "S6", "when": null }] },
+        { "id": "S6", "type": "query", "name": "Lista moich zadań: dzisiejsze, przyszłe, zaległe", "actor": "Salesperson", "context": "Sales Activities", "aggregate": null, "commands": [], "queries": ["GetMyFollowUpsQuery"], "emits": [], "publishes": [], "trigger": null, "sync_calls": [], "status": "planned", "backlog": ["CRM-013"], "open_questions": [], "next": [{ "to": "S7", "when": null }] },
+        { "id": "S7", "type": "command", "name": "Oznaczenie follow-upu jako wykonanego", "actor": "Salesperson", "context": "Sales Activities", "aggregate": "SalesActivity", "commands": ["CompleteFollowUp"], "queries": [], "emits": ["FollowUpCompleted"], "publishes": [], "trigger": null, "sync_calls": [], "status": "planned", "backlog": ["CRM-013"], "open_questions": [], "next": [{ "to": "S8", "when": null }] },
+        { "id": "S8", "type": "decision", "name": "Czy wynik zmienia pipeline?", "actor": "Salesperson", "context": "Sales Activities", "aggregate": null, "commands": [], "queries": [], "emits": [], "publishes": [], "trigger": null, "sync_calls": [], "status": null, "backlog": [], "open_questions": [], "next": [{ "to": "S9", "when": "tak" }, { "to": "S5", "when": "nie, zaplanuj kontakt" }, { "to": "S10", "when": "nie" }] },
+        { "id": "S9", "type": "action", "name": "Handlowiec wykonuje komendę w Sales Pipeline (proces 1) — bez automatycznej zmiany", "actor": "Salesperson", "context": "Sales Pipeline", "aggregate": null, "commands": ["QualifyLead", "RejectLead", "ChangeOpportunityStage"], "queries": [], "emits": [], "publishes": [], "trigger": null, "sync_calls": [], "status": "partial", "backlog": ["CRM-005", "CRM-006", "CRM-015"], "open_questions": [], "next": [{ "to": "S10", "when": null }] },
+        { "id": "S10", "type": "end", "name": "Aktywność widoczna w historii leada i w Customer 360", "actor": null, "context": "Sales Activities", "aggregate": null, "commands": [], "queries": [], "emits": [], "publishes": [], "trigger": null, "sync_calls": [], "status": null, "backlog": ["CRM-003", "CRM-009"], "open_questions": [], "next": [] },
+        { "id": "S11", "type": "policy", "name": "Po zwrocie zamówienia follow-up dla handlowca — tylko po decyzji Q-09", "actor": null, "context": "Sales Activities", "aggregate": null, "commands": [], "queries": [], "emits": [], "publishes": [], "trigger": "BackofficeOrderReturnedToSalesIntegrationEvent", "sync_calls": [], "status": "decision_needed", "backlog": ["CRM-026"], "open_questions": ["Q-09"], "next": [{ "to": "S5", "when": "po decyzji" }] }
+      ]
+    },
+    {
+      "id": "process_04_sales_finalization_order_capture",
+      "title": "Proces 4 — Finalizacja sprzedaży i wprowadzanie zamówienia",
+      "document": "ai_readable/processes/process_04_sales_finalization_order_capture.md",
+      "diagram": "diagrams/png/05_process_04_sales_finalization_order_capture.png",
+      "bounded_contexts": ["Order Capture", "Sales Pipeline", "Customer Management", "Order Backoffice", "Reporting & KPI"],
+      "aggregates": ["SalesOrder"],
+      "backlog": ["CRM-016", "CRM-018", "CRM-019", "CRM-020", "CRM-021", "CRM-026"],
+      "open_questions": ["Q-04", "Q-05", "Q-07", "Q-08"],
+      "read_models": [
+        { "name": "GetSalesOrderStatusQuery", "status": "planned", "backlog": ["CRM-021"], "note": "Status zamówienia" },
+        { "name": "SalespersonDashboard", "status": "planned", "backlog": ["CRM-031"], "note": "zamówienia zwrócone do poprawy" }
+      ],
+      "steps": [
+        { "id": "S1", "type": "start", "name": "Szansa jest wygrana (OpportunityWon, proces 1); handlowiec otwiera ją", "actor": "Salesperson", "context": "Sales Pipeline", "aggregate": null, "commands": [], "queries": [], "emits": [], "publishes": [], "trigger": null, "sync_calls": [], "status": null, "backlog": ["CRM-016"], "open_questions": [], "next": [{ "to": "S2", "when": null }] },
+        { "id": "S2", "type": "command", "name": "Utworzenie zamówienia w statusie Draft z wygranej szansy", "actor": "Salesperson", "context": "Order Capture", "aggregate": "SalesOrder", "commands": ["CreateOrderFromOpportunity"], "queries": [], "emits": ["SalesOrderCreated"], "publishes": [], "trigger": null, "sync_calls": ["Sales Pipeline: czy szansa jest wygrana, dane szansy", "Customer Management: snapshot klienta → OrderCustomerSnapshot"], "status": "planned", "backlog": ["CRM-018"], "open_questions": ["Q-04"], "next": [{ "to": "S3", "when": null }] },
+        { "id": "S3", "type": "command", "name": "Edycja szkicu: pozycje i warunki; zapis bez przekazania", "actor": "Salesperson", "context": "Order Capture", "aggregate": "SalesOrder", "commands": ["AddOrderLine"], "queries": [], "emits": [], "publishes": [], "trigger": null, "sync_calls": [], "status": "planned", "backlog": ["CRM-018", "CRM-019"], "open_questions": ["Q-05"], "next": [{ "to": "S4", "when": null }] },
+        { "id": "S4", "type": "decision", "name": "Czy zamówienie jest kompletne? Lista braków widoczna przed przekazaniem", "actor": "Salesperson", "context": "Order Capture", "aggregate": "SalesOrder", "commands": [], "queries": [], "emits": [], "publishes": [], "trigger": null, "sync_calls": [], "status": null, "backlog": ["CRM-019"], "open_questions": ["Q-05"], "next": [{ "to": "S3", "when": "nie" }, { "to": "S5", "when": "tak" }] },
+        { "id": "S5", "type": "command", "name": "Przekazanie do backoffice; edycja zablokowana", "actor": "Salesperson", "context": "Order Capture", "aggregate": "SalesOrder", "commands": ["SubmitOrderToBackoffice"], "queries": [], "emits": ["SalesOrderSubmittedToBackoffice"], "publishes": ["SalesOrderSubmittedIntegrationEvent"], "trigger": null, "sync_calls": [], "status": "planned", "backlog": ["CRM-020"], "open_questions": [], "next": [{ "to": "S6", "when": null }] },
+        { "id": "S6", "type": "end", "name": "Zamówienie w obsłudze backoffice (proces 5)", "actor": null, "context": "Order Backoffice", "aggregate": null, "commands": [], "queries": [], "emits": [], "publishes": [], "trigger": null, "sync_calls": [], "status": null, "backlog": ["CRM-022"], "open_questions": [], "next": [] },
+        { "id": "S7", "type": "policy", "name": "Po zwrocie z backoffice zamówienie przechodzi w ReturnedToSales i znów jest edytowalne", "actor": null, "context": "Order Capture", "aggregate": "SalesOrder", "commands": ["ReopenSalesOrderAfterReturn"], "queries": [], "emits": [], "publishes": [], "trigger": "BackofficeOrderReturnedToSalesIntegrationEvent", "sync_calls": [], "status": "planned", "backlog": ["CRM-026"], "open_questions": ["Q-08"], "next": [{ "to": "S3", "when": null }] }
+      ]
+    },
+    {
+      "id": "process_05_backoffice_order_processing",
+      "title": "Proces 5 — Obsługa zamówienia przez backoffice",
+      "document": "ai_readable/processes/process_05_backoffice_order_processing.md",
+      "diagram": "diagrams/png/06_process_05_backoffice_order_processing.png",
+      "bounded_contexts": ["Order Backoffice", "Order Capture", "Sales Activities", "Integrations", "Reporting & KPI"],
+      "aggregates": ["BackofficeOrderCase"],
+      "backlog": ["CRM-020", "CRM-021", "CRM-022", "CRM-023", "CRM-024", "CRM-025", "CRM-026", "CRM-027", "CRM-033"],
+      "open_questions": ["Q-06", "Q-07", "Q-08", "Q-09", "Q-14"],
+      "read_models": [
+        { "name": "GetBackofficeQueueQuery", "status": "planned", "backlog": ["CRM-022"], "note": "Kolejka backoffice" },
+        { "name": "BackofficeReport", "status": "planned", "backlog": ["CRM-033"], "note": null },
+        { "name": "GetSalesOrderStatusQuery", "status": "planned", "backlog": ["CRM-021"], "note": "Status zamówienia dla handlowca" }
+      ],
+      "steps": [
+        { "id": "S1", "type": "policy", "name": "Otwórz sprawę (New) albo wznów istniejącą po ponownym przekazaniu", "actor": null, "context": "Order Backoffice", "aggregate": "BackofficeOrderCase", "commands": ["OpenBackofficeOrderCase"], "queries": [], "emits": ["BackofficeOrderCaseOpened"], "publishes": [], "trigger": "SalesOrderSubmittedIntegrationEvent", "sync_calls": [], "status": "planned", "backlog": ["CRM-020", "CRM-022"], "open_questions": ["Q-08"], "next": [{ "to": "S2", "when": null }] },
+        { "id": "S2", "type": "query", "name": "Kolejka backoffice: klient, handlowiec, data przekazania, status; filtrowanie i sortowanie", "actor": "BackofficeUser", "context": "Order Backoffice", "aggregate": null, "commands": [], "queries": ["GetBackofficeQueueQuery"], "emits": [], "publishes": [], "trigger": null, "sync_calls": [], "status": "planned", "backlog": ["CRM-022"], "open_questions": [], "next": [{ "to": "S3", "when": null }] },
+        { "id": "S3", "type": "command", "name": "Przypisanie pracownika (menedżer) albo przypisanie do siebie (pracownik)", "actor": "BackofficeManager", "context": "Order Backoffice", "aggregate": "BackofficeOrderCase", "commands": ["AssignBackofficeOrder"], "queries": [], "emits": ["BackofficeOrderAssigned"], "publishes": [], "trigger": null, "sync_calls": [], "status": "planned", "backlog": ["CRM-023"], "open_questions": [], "next": [{ "to": "S4", "when": null }] },
+        { "id": "S4", "type": "command", "name": "Rozpoczęcie weryfikacji: InVerification", "actor": "BackofficeUser", "context": "Order Backoffice", "aggregate": "BackofficeOrderCase", "commands": ["ChangeBackofficeOrderStatus"], "queries": [], "emits": ["BackofficeOrderStatusChanged"], "publishes": [], "trigger": null, "sync_calls": [], "status": "planned", "backlog": ["CRM-024"], "open_questions": ["Q-06"], "next": [{ "to": "S5", "when": null }] },
+        { "id": "S5", "type": "decision", "name": "Czy dane są kompletne i poprawne?", "actor": "BackofficeUser", "context": "Order Backoffice", "aggregate": null, "commands": [], "queries": [], "emits": [], "publishes": [], "trigger": null, "sync_calls": [], "status": null, "backlog": [], "open_questions": [], "next": [{ "to": "S6", "when": "braki do poprawy przez handlowca" }, { "to": "S7", "when": "brak informacji" }, { "to": "S8", "when": "tak" }] },
+        { "id": "S6", "type": "command", "name": "Zwrot do handlowca z komentarzem (proces 4)", "actor": "BackofficeUser", "context": "Order Backoffice", "aggregate": "BackofficeOrderCase", "commands": ["ReturnOrderToSales"], "queries": [], "emits": ["BackofficeOrderReturnedToSales"], "publishes": ["BackofficeOrderReturnedToSalesIntegrationEvent"], "trigger": null, "sync_calls": [], "status": "planned", "backlog": ["CRM-026"], "open_questions": [], "next": [] },
+        { "id": "S7", "type": "command", "name": "Oczekiwanie na informacje bez zwrotu do handlowca: AwaitingInformation", "actor": "BackofficeUser", "context": "Order Backoffice", "aggregate": "BackofficeOrderCase", "commands": ["ChangeBackofficeOrderStatus"], "queries": [], "emits": ["BackofficeOrderStatusChanged"], "publishes": [], "trigger": null, "sync_calls": [], "status": "planned", "backlog": ["CRM-024"], "open_questions": [], "next": [{ "to": "S4", "when": "informacja uzupełniona" }] },
+        { "id": "S8", "type": "command", "name": "Realizacja: InFulfillment", "actor": "BackofficeUser", "context": "Order Backoffice", "aggregate": "BackofficeOrderCase", "commands": ["ChangeBackofficeOrderStatus"], "queries": [], "emits": ["BackofficeOrderStatusChanged"], "publishes": [], "trigger": null, "sync_calls": [], "status": "planned", "backlog": ["CRM-024"], "open_questions": [], "next": [{ "to": "S9", "when": null }] },
+        { "id": "S9", "type": "decision", "name": "Czy jest przeszkoda w realizacji?", "actor": "BackofficeUser", "context": "Order Backoffice", "aggregate": null, "commands": [], "queries": [], "emits": [], "publishes": [], "trigger": null, "sync_calls": [], "status": null, "backlog": [], "open_questions": [], "next": [{ "to": "S10", "when": "tak" }, { "to": "S11", "when": "nie" }] },
+        { "id": "S10", "type": "command", "name": "Zablokowanie z powodem (BlockingReason); po usunięciu przeszkody powrót do realizacji", "actor": "BackofficeUser", "context": "Order Backoffice", "aggregate": "BackofficeOrderCase", "commands": ["ChangeBackofficeOrderStatus"], "queries": [], "emits": ["BackofficeOrderBlocked"], "publishes": [], "trigger": null, "sync_calls": [], "status": "planned", "backlog": ["CRM-024"], "open_questions": [], "next": [{ "to": "S8", "when": "odblokowanie" }] },
+        { "id": "S11", "type": "command", "name": "Zakończenie: Completed z datą zakończenia", "actor": "BackofficeUser", "context": "Order Backoffice", "aggregate": "BackofficeOrderCase", "commands": ["CompleteOrder"], "queries": [], "emits": ["BackofficeOrderCompleted"], "publishes": ["BackofficeOrderCompletedIntegrationEvent"], "trigger": null, "sync_calls": [], "status": "planned", "backlog": ["CRM-027"], "open_questions": [], "next": [{ "to": "S12", "when": null }] },
+        { "id": "S12", "type": "end", "name": "Sprawa zamknięta; dalej proces 6", "actor": null, "context": "Order Backoffice", "aggregate": null, "commands": [], "queries": [], "emits": [], "publishes": [], "trigger": null, "sync_calls": [], "status": null, "backlog": ["CRM-027"], "open_questions": [], "next": [] },
+        { "id": "S13", "type": "command", "name": "Komentarz wewnętrzny albo widoczny dla sprzedaży — w dowolnym momencie obsługi", "actor": "BackofficeUser", "context": "Order Backoffice", "aggregate": "BackofficeOrderCase", "commands": ["AddBackofficeComment"], "queries": [], "emits": ["BackofficeCommentAdded"], "publishes": [], "trigger": null, "sync_calls": [], "status": "planned", "backlog": ["CRM-025"], "open_questions": [], "next": [] },
+        { "id": "S14", "type": "command", "name": "Anulowanie zamówienia — kto i z jakich statusów, do decyzji", "actor": null, "context": "Order Backoffice", "aggregate": "BackofficeOrderCase", "commands": ["CancelOrder"], "queries": [], "emits": ["BackofficeOrderCancelled"], "publishes": ["BackofficeOrderCancelledIntegrationEvent"], "trigger": null, "sync_calls": [], "status": "decision_needed", "backlog": [], "open_questions": ["Q-07"], "next": [] }
+      ]
+    },
+    {
+      "id": "process_06_integration_invoice_payment_reporting",
+      "title": "Proces 6 — Integracja, fakturowanie, płatność i aktualizacja raportów",
+      "document": "ai_readable/processes/process_06_integration_invoice_payment_reporting.md",
+      "diagram": "diagrams/png/07_process_06_integration_invoice_payment_reporting.png",
+      "bounded_contexts": ["Integrations", "Order Backoffice", "Reporting & KPI", "Identity & Access"],
+      "aggregates": ["IntegrationJob", "ExternalSystemMapping"],
+      "backlog": ["CRM-030", "CRM-031", "CRM-032", "CRM-033", "CRM-034", "CRM-037", "CRM-038"],
+      "open_questions": ["Q-10", "Q-11", "Q-15"],
+      "read_models": [
+        { "name": "SalespersonDashboard", "status": "planned", "backlog": ["CRM-031"], "note": null },
+        { "name": "SalesManagerDashboard", "status": "planned", "backlog": ["CRM-032"], "note": null },
+        { "name": "BackofficeReport", "status": "planned", "backlog": ["CRM-033"], "note": null },
+        { "name": "ReportExport", "status": "planned", "backlog": ["CRM-034"], "note": "CSV/XLSX" },
+        { "name": "AuditLog", "status": "planned", "backlog": ["CRM-030"], "note": null }
+      ],
+      "steps": [
+        { "id": "S1", "type": "policy", "name": "Utwórz zadanie eksportu (Pending) — moment wysyłki do potwierdzenia", "actor": null, "context": "Integrations", "aggregate": "IntegrationJob", "commands": ["ExportOrderToErp"], "queries": [], "emits": [], "publishes": [], "trigger": "BackofficeOrderCompletedIntegrationEvent", "sync_calls": [], "status": "planned", "backlog": ["CRM-038"], "open_questions": ["Q-10"], "next": [{ "to": "S2", "when": null }] },
+        { "id": "S2", "type": "action", "name": "ACL: mapowanie kontraktu CRM na DTO systemu zewnętrznego", "actor": null, "context": "Integrations", "aggregate": null, "commands": [], "queries": [], "emits": [], "publishes": [], "trigger": null, "sync_calls": [], "status": "planned", "backlog": ["CRM-037"], "open_questions": [], "next": [{ "to": "S3", "when": null }] },
+        { "id": "S3", "type": "external", "name": "Wywołanie API ERP / fakturowania", "actor": null, "context": "Integrations", "aggregate": null, "commands": [], "queries": [], "emits": [], "publishes": [], "trigger": null, "sync_calls": [], "status": "planned", "backlog": ["CRM-038"], "open_questions": [], "next": [{ "to": "S4", "when": null }] },
+        { "id": "S4", "type": "decision", "name": "Czy wysyłka się udała?", "actor": null, "context": "Integrations", "aggregate": null, "commands": [], "queries": [], "emits": [], "publishes": [], "trigger": null, "sync_calls": [], "status": null, "backlog": [], "open_questions": [], "next": [{ "to": "S5", "when": "tak" }, { "to": "S7", "when": "nie" }] },
+        { "id": "S5", "type": "action", "name": "Zadanie zakończone sukcesem", "actor": null, "context": "Integrations", "aggregate": "IntegrationJob", "commands": [], "queries": [], "emits": ["IntegrationJobSucceeded"], "publishes": [], "trigger": null, "sync_calls": [], "status": "planned", "backlog": ["CRM-038"], "open_questions": [], "next": [{ "to": "S6", "when": null }] },
+        { "id": "S6", "type": "command", "name": "Zapis identyfikatora zamówienia w systemie zewnętrznym", "actor": null, "context": "Integrations", "aggregate": "ExternalSystemMapping", "commands": ["RecordExternalId"], "queries": [], "emits": [], "publishes": [], "trigger": null, "sync_calls": [], "status": "planned", "backlog": ["CRM-038"], "open_questions": [], "next": [] },
+        { "id": "S7", "type": "action", "name": "Zapis nieudanej próby (bez danych wrażliwych)", "actor": null, "context": "Integrations", "aggregate": "IntegrationJob", "commands": [], "queries": [], "emits": ["IntegrationJobFailed"], "publishes": [], "trigger": null, "sync_calls": [], "status": "planned", "backlog": ["CRM-038"], "open_questions": [], "next": [{ "to": "S8", "when": null }] },
+        { "id": "S8", "type": "decision", "name": "Czy limit automatycznych ponowień został wyczerpany?", "actor": null, "context": "Integrations", "aggregate": null, "commands": [], "queries": [], "emits": [], "publishes": [], "trigger": null, "sync_calls": [], "status": null, "backlog": [], "open_questions": ["Q-10"], "next": [{ "to": "S9", "when": "nie" }, { "to": "S10", "when": "tak" }] },
+        { "id": "S9", "type": "action", "name": "Automatyczne ponowienie po odstępie", "actor": null, "context": "Integrations", "aggregate": "IntegrationJob", "commands": [], "queries": [], "emits": [], "publishes": [], "trigger": null, "sync_calls": [], "status": "planned", "backlog": ["CRM-038"], "open_questions": [], "next": [{ "to": "S2", "when": null }] },
+        { "id": "S10", "type": "action", "name": "Błąd integracji widoczny dla uprawnionych użytkowników", "actor": null, "context": "Integrations", "aggregate": null, "commands": [], "queries": [], "emits": [], "publishes": [], "trigger": null, "sync_calls": [], "status": "planned", "backlog": ["CRM-038"], "open_questions": [], "next": [{ "to": "S11", "when": null }] },
+        { "id": "S11", "type": "command", "name": "Ręczne ponowienie wysyłki", "actor": "BackofficeManager", "context": "Integrations", "aggregate": "IntegrationJob", "commands": ["RetryIntegrationJob"], "queries": [], "emits": [], "publishes": [], "trigger": null, "sync_calls": [], "status": "planned", "backlog": ["CRM-038"], "open_questions": ["Q-10"], "next": [{ "to": "S2", "when": null }] },
+        { "id": "S12", "type": "policy", "name": "Projekcje raportowe i audyt ze zdarzeń wszystkich kontekstów", "actor": null, "context": "Reporting & KPI", "aggregate": null, "commands": [], "queries": [], "emits": [], "publishes": [], "trigger": null, "sync_calls": [], "status": "planned", "backlog": ["CRM-030", "CRM-031", "CRM-032", "CRM-033", "CRM-034"], "open_questions": [], "next": [] },
+        { "id": "S13", "type": "policy", "name": "Informacje zwrotne z ERP (faktura, płatność), e-mail, kalendarz, płatności — do decyzji", "actor": null, "context": "Integrations", "aggregate": null, "commands": [], "queries": [], "emits": [], "publishes": [], "trigger": null, "sync_calls": [], "status": "decision_needed", "backlog": [], "open_questions": ["Q-10", "Q-11"], "next": [] }
+      ]
+    }
+  ]
+}
+

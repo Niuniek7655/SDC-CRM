@@ -5,6 +5,8 @@
 Ten dokument zawiera listę user stories do realizacji projektu CRM.  
 Każda story ma miejsce na oznaczenie statusu realizacji.
 
+Kolejność realizacji story (z zależnościami, etapami i kamieniami milowymi): [04-plan-realizacji-pbi.md](04-plan-realizacji-pbi.md).
+
 ## Legenda statusów
 
 Dla każdej story można uzupełnić pole `Status`.
@@ -72,11 +74,11 @@ aby rozpocząć proces sprzedaży.
 
 ### Komendy domenowe
 
-- `CreateLead`
+- `RegisterLead`
 
 ### Zdarzenia domenowe
 
-- `LeadCreated`
+- `LeadRegistered`
 
 ---
 
@@ -820,7 +822,7 @@ aby rozpocząć proces realizacji.
 
 ### Zdarzenia domenowe
 
-- `OrderSubmittedToBackoffice`
+- `SalesOrderSubmittedToBackoffice`
 
 ---
 
@@ -968,6 +970,7 @@ aby odzwierciedlić aktualny etap obsługi.
 ### Zdarzenia domenowe
 
 - `BackofficeOrderStatusChanged`
+- `BackofficeOrderBlocked`
 
 ---
 
@@ -1039,7 +1042,7 @@ aby handlowiec mógł uzupełnić brakujące lub błędne dane.
 
 ### Zdarzenia domenowe
 
-- `OrderReturnedToSales`
+- `BackofficeOrderReturnedToSales`
 
 ---
 
@@ -1079,7 +1082,7 @@ aby zakończyć proces obsługi.
 
 ### Zdarzenia domenowe
 
-- `OrderCompleted`
+- `BackofficeOrderCompleted`
 
 ---
 
@@ -1091,7 +1094,7 @@ aby zakończyć proces obsługi.
 **Priorytet:** Must Have  
 **Rola:** Każdy użytkownik  
 **Kontekst DDD:** Identity & Access  
-**Agregat:** User
+**Model:** konta w SSO (SimpleIdServer), tożsamość z tokena (`ICurrentUser`)
 
 ### User Story
 
@@ -1123,7 +1126,7 @@ aby korzystać z funkcji zgodnych z moją rolą.
 **Priorytet:** Must Have  
 **Rola:** Administrator  
 **Kontekst DDD:** Identity & Access  
-**Agregat:** Role
+**Model:** role z tokena SSO (`CrmRoles`), polityki autoryzacji (`CrmPolicies`)
 
 ### User Story
 
@@ -1323,7 +1326,7 @@ aby analizować je poza systemem.
 **Priorytet:** Should Have  
 **Rola:** Administrator  
 **Kontekst DDD:** Identity & Access  
-**Agregat:** User
+**Model:** konta i role w SSO (SimpleIdServer) — sposób zarządzania do decyzji (Q-12)
 
 ### User Story
 
@@ -1449,8 +1452,9 @@ aby uruchomić dalszy proces realizacyjny lub księgowy.
 
 ### Zdarzenia wejściowe
 
-- `OrderCompleted`
-- `OrderApprovedForInvoicing`
+- `BackofficeOrderCompletedIntegrationEvent`
+
+Osobny krok zatwierdzenia zamówienia do fakturowania nie istnieje w workflow — moment wysyłki do decyzji (Q-10).
 
 ---
 

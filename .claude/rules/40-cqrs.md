@@ -27,11 +27,11 @@ Command examples:
 - `RejectLeadCommand`
 - `CreateOpportunityFromLeadCommand`
 - `WinOpportunityCommand`
-- `CreateSalesOrderFromOpportunityCommand`
+- `CreateOrderFromOpportunityCommand`
 - `SubmitOrderToBackofficeCommand`
 - `ChangeBackofficeOrderStatusCommand`
 - `ReturnOrderToSalesCommand`
-- `CompleteBackofficeOrderCommand`
+- `CompleteOrderCommand`
 
 Query examples:
 

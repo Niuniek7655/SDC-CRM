@@ -1,0 +1,405 @@
+{
+  "schema_version": 2,
+  "updated": "2026-09-26",
+  "description": "Model DDD CRM: bounded contexty, agregaty, encje, value objecty, komendy, zapytania i reguły ze stanem implementacji. Odpowiednik bounded_contexts_and_aggregates.md.",
+  "status_values": {
+    "implemented": "zaimplementowane w kodzie i pokryte testami",
+    "partial": "częściowo (np. tylko w domenie, bez handlera lub API)",
+    "planned": "planowane w backlogu",
+    "decision_needed": "wymaga decyzji biznesowej (open_questions.md)"
+  },
+  "sources_of_truth": [
+    "Backend/src — elementy zaimplementowane",
+    "doc/01-slownik-jezyka-wszechobecnego.md",
+    "doc/03-backlog-user-stories.md",
+    "doc/02-uzytkownicy-role-uprawnienia.md",
+    ".github/copilot-instructions.md i .github/instructions/*"
+  ],
+  "architectural_rules": [
+    "Customer Management jest właścicielem Customer; inne konteksty przechowują CustomerId i snapshot tylko tam, gdzie jest biznesowo potrzebny (OrderCustomerSnapshot).",
+    "Sales Pipeline jest właścicielem Lead i Opportunity; backoffice nie zmienia pipeline sprzedaży.",
+    "Order Capture jest właścicielem SalesOrder, Order Backoffice jest właścicielem BackofficeOrderCase i statusu realizacji; to dwa różne agregaty.",
+    "Zmiany stanu między kontekstami przenoszą zdarzenia integracyjne; synchronicznie tylko zapytania, snapshoty i autoryzacja.",
+    "Agregaty odwołują się do innych agregatów wyłącznie przez identyfikatory.",
+    "Reporting & KPI tylko czyta (read modele, projekcje).",
+    "Konta i role utrzymuje dostawca tożsamości; backend zawsze sam egzekwuje uprawnienia.",
+    "Systemy zewnętrzne tylko przez warstwę antykorupcyjną (Integrations).",
+    "Rekordów wymagających historii nie usuwa się fizycznie."
+  ],
+  "supporting_areas": [
+    {
+      "name": "Administration",
+      "status": "planned",
+      "backlog": ["CRM-036"],
+      "aggregates": ["Configuration"],
+      "open_questions": ["Q-19"],
+      "note": "Konfiguracja słowników (źródła leadów, powody przegranej, priorytety, statusy); Could Have. Obszar wspierający spoza ośmiu kontekstów słownika."
+    }
+  ],
+  "bounded_contexts": [
+    {
+      "name": "Customer Management",
+      "responsibility": "Źródło prawdy o kliencie i jego osobach kontaktowych; widok 360 klienta.",
+      "roles": ["Salesperson", "SalesManager", "Admin"],
+      "backlog": ["CRM-007", "CRM-008", "CRM-009"],
+      "code_folders": [
+        { "name": "Customers", "exists": false }
+      ],
+      "open_questions": ["Q-01", "Q-02"],
+      "aggregates": [
+        {
+          "name": "Customer",
+          "status": "planned",
+          "code": null,
+          "entities": [
+            { "name": "ContactPerson", "status": "planned", "note": "imię i nazwisko lub nazwa, telefon, e-mail, oznaczenie głównego kontaktu (CRM-008)" }
+          ],
+          "value_objects": [
+            { "name": "CustomerId", "status": "planned", "note": "T-03" },
+            { "name": "TaxIdentifier", "status": "planned", "note": "NIP, opcjonalny (CRM-007)" },
+            { "name": "EmailAddress", "status": "planned", "note": null },
+            { "name": "PhoneNumber", "status": "planned", "note": null }
+          ],
+          "commands": [
+            { "name": "CreateCustomer", "status": "planned", "roles": ["Salesperson", "SalesManager", "Admin"], "backlog": ["CRM-007"], "emits": ["CustomerCreated"], "api": null, "code": null, "note": null },
+            { "name": "AddContactPerson", "status": "planned", "roles": ["Salesperson", "SalesManager", "Admin"], "backlog": ["CRM-008"], "emits": ["ContactPersonAdded"], "api": null, "code": null, "note": null }
+          ],
+          "events": ["CustomerCreated", "ContactPersonAdded"],
+          "rules": [
+            { "rule": "Klient musi mieć nazwę.", "status": "planned" },
+            { "rule": "Klient może mieć wiele osób kontaktowych; jedna może być oznaczona jako główna.", "status": "planned" },
+            { "rule": "System ostrzega o potencjalnym duplikacie klienta (Q-02).", "status": "planned" }
+          ],
+          "open_questions": ["Q-01", "Q-02"]
+        }
+      ],
+      "queries": [
+        { "name": "GetCustomer360Query", "status": "planned", "roles": ["Salesperson", "SalesManager", "Admin"], "backlog": ["CRM-009"], "api": null, "code": null, "note": "łączy dane kilku kontekstów (T-06)" }
+      ],
+      "read_models": [],
+      "components": []
+    },
+    {
+      "name": "Sales Pipeline",
+      "responsibility": "Leady, kwalifikacja, szanse sprzedaży i etapy pipeline.",
+      "roles": ["Salesperson", "SalesManager", "Admin"],
+      "backlog": ["CRM-001", "CRM-002", "CRM-003", "CRM-004", "CRM-005", "CRM-006", "CRM-014", "CRM-015", "CRM-016", "CRM-017"],
+      "code_folders": [
+        { "name": "Leads", "exists": true },
+        { "name": "Opportunities", "exists": false }
+      ],
+      "open_questions": ["Q-13"],
+      "aggregates": [
+        {
+          "name": "Lead",
+          "status": "partial",
+          "code": "Backend/src/SDC.CRM.Domain/Leads/Lead.cs",
+          "entities": [],
+          "value_objects": [
+            { "name": "LeadStatus", "status": "implemented", "note": "New, Qualified, Rejected; InContact (W kontakcie) — Q-03" },
+            { "name": "EmailAddress", "status": "implemented", "note": "w kodzie Email (T-07); obecnie wymagany — Q-03" },
+            { "name": "RejectionReason", "status": "partial", "note": "string w agregacie (T-07)" },
+            { "name": "LeadSource", "status": "partial", "note": "string; słownik źródeł — CRM-036, Q-19" },
+            { "name": "PhoneNumber", "status": "partial", "note": "string (T-07)" },
+            { "name": "LeadPriority", "status": "planned", "note": "niski, normalny, wysoki (CRM-001)" },
+            { "name": "LeadId", "status": "partial", "note": "Guid (T-03)" }
+          ],
+          "commands": [
+            { "name": "RegisterLead", "status": "implemented", "roles": ["Salesperson", "SalesManager", "Admin"], "backlog": ["CRM-001"], "emits": ["LeadRegistered"], "api": "POST /api/leads", "code": "Backend/src/SDC.CRM.Application/Leads/RegisterLead", "note": "właściciel z tokena (ICurrentUser), polityka leads:register" },
+            { "name": "AssignLeadToSalesperson", "status": "planned", "roles": ["SalesManager", "Admin"], "backlog": ["CRM-004"], "emits": ["LeadAssigned"], "api": null, "code": null, "note": null },
+            { "name": "QualifyLead", "status": "partial", "roles": ["Salesperson", "SalesManager", "Admin"], "backlog": ["CRM-005"], "emits": ["LeadQualified"], "api": null, "code": "Backend/src/SDC.CRM.Domain/Leads/Lead.cs", "note": "tylko metoda Lead.Qualify(); brak handlera i endpointu" },
+            { "name": "RejectLead", "status": "partial", "roles": ["Salesperson", "SalesManager", "Admin"], "backlog": ["CRM-006"], "emits": ["LeadRejected"], "api": null, "code": "Backend/src/SDC.CRM.Domain/Leads/Lead.cs", "note": "tylko metoda Lead.Reject(reason); brak handlera i endpointu" }
+          ],
+          "events": ["LeadRegistered", "LeadAssigned", "LeadQualified", "LeadRejected"],
+          "rules": [
+            { "rule": "Lead ma nazwę firmy, osobę kontaktową i właściciela; właściciel pochodzi z tokena, nie z żądania.", "status": "implemented" },
+            { "rule": "Odrzucony lead nie może zostać zakwalifikowany.", "status": "implemented" },
+            { "rule": "Odrzucenie leada wymaga powodu.", "status": "implemented" },
+            { "rule": "Lead ma temat/nazwę, priorytet i co najmniej telefon albo e-mail (Q-03).", "status": "planned" },
+            { "rule": "System ostrzega o potencjalnym duplikacie klienta (Q-02).", "status": "planned" },
+            { "rule": "Zmiana właściciela jest widoczna w historii (CRM-004).", "status": "planned" }
+          ],
+          "open_questions": ["Q-02", "Q-03"]
+        },
+        {
+          "name": "Opportunity",
+          "status": "planned",
+          "code": null,
+          "entities": [
+            { "name": "StageHistoryEntry", "status": "planned", "note": "historia zmian etapu (CRM-015)" }
+          ],
+          "value_objects": [
+            { "name": "OpportunityId", "status": "planned", "note": "T-03" },
+            { "name": "PipelineStage", "status": "planned", "note": "Nowa szansa, Kontakt nawiązany, Oferta wysłana, Negocjacje, Wygrana, Przegrana (słownik §6.2, Q-19)" },
+            { "name": "Money", "status": "planned", "note": "wartość szansy" },
+            { "name": "Probability", "status": "planned", "note": "ręcznie lub wynikające z etapu" },
+            { "name": "LostReason", "status": "planned", "note": "np. cena, konkurencja, brak decyzji, brak budżetu" }
+          ],
+          "commands": [
+            { "name": "CreateOpportunityFromLead", "status": "planned", "roles": ["Salesperson", "SalesManager", "Admin"], "backlog": ["CRM-005", "CRM-014"], "emits": ["OpportunityCreated"], "api": null, "code": null, "note": "wykonywana przez politykę po LeadQualified" },
+            { "name": "ChangeOpportunityStage", "status": "planned", "roles": ["Salesperson", "SalesManager", "Admin"], "backlog": ["CRM-015"], "emits": ["OpportunityStageChanged"], "api": null, "code": null, "note": null },
+            { "name": "WinOpportunity", "status": "planned", "roles": ["Salesperson", "SalesManager", "Admin"], "backlog": ["CRM-016"], "emits": ["OpportunityWon"], "api": null, "code": null, "note": null },
+            { "name": "LoseOpportunity", "status": "planned", "roles": ["Salesperson", "SalesManager", "Admin"], "backlog": ["CRM-017"], "emits": ["OpportunityLost"], "api": null, "code": null, "note": null }
+          ],
+          "events": ["OpportunityCreated", "OpportunityStageChanged", "OpportunityWon", "OpportunityLost"],
+          "rules": [
+            { "rule": "Szansa jest powiązana z leadem i klientem, ma właściciela i pierwszy etap pipeline.", "status": "planned" },
+            { "rule": "Przegrana szansa wymaga LostReason.", "status": "planned" },
+            { "rule": "Wygranej szansy nie można przywrócić do zwykłego etapu bez specjalnych uprawnień (Q-18).", "status": "planned" },
+            { "rule": "Po LeadQualified powstaje szansa sprzedaży (CRM-005).", "status": "planned" }
+          ],
+          "open_questions": ["Q-01", "Q-18", "Q-19"]
+        }
+      ],
+      "queries": [
+        { "name": "GetMyLeadsQuery", "status": "implemented", "roles": ["Salesperson", "SalesManager", "Admin"], "backlog": ["CRM-002"], "api": "GET /api/leads/mine", "code": "Backend/src/SDC.CRM.Application/Leads/GetMyLeads", "note": "bez filtrowania i sortowania; polityka leads:view-own" },
+        { "name": "GetLeadDetailsQuery", "status": "planned", "roles": ["Salesperson", "SalesManager", "Admin"], "backlog": ["CRM-003"], "api": null, "code": null, "note": null },
+        { "name": "GetOpportunityPipelineQuery", "status": "planned", "roles": ["Salesperson", "SalesManager", "Admin"], "backlog": ["CRM-015"], "api": null, "code": null, "note": "widok Opportunity Pipeline" }
+      ],
+      "read_models": [],
+      "components": []
+    },
+    {
+      "name": "Sales Activities",
+      "responsibility": "Kontakty, notatki i follow-upy handlowca; historia relacji z klientem.",
+      "roles": ["Salesperson", "SalesManager", "Admin"],
+      "backlog": ["CRM-010", "CRM-011", "CRM-012", "CRM-013"],
+      "code_folders": [
+        { "name": "SalesActivities", "exists": false }
+      ],
+      "open_questions": [],
+      "aggregates": [
+        {
+          "name": "SalesActivity",
+          "status": "planned",
+          "code": null,
+          "entities": [],
+          "value_objects": [
+            { "name": "SalesActivityId", "status": "planned", "note": "T-03" },
+            { "name": "SalesActivityType", "status": "planned", "note": "kontakt, SalesNote, FollowUp (T-04)" },
+            { "name": "ContactChannel", "status": "planned", "note": "telefon, e-mail, spotkanie, inny (CRM-011)" },
+            { "name": "NoteContent", "status": "planned", "note": "treść notatki (CRM-010)" },
+            { "name": "DueDate", "status": "planned", "note": "termin follow-upu (CRM-012)" },
+            { "name": "FollowUpStatus", "status": "planned", "note": "zaplanowany, wykonany; zaległy wyliczany z terminu (CRM-013)" },
+            { "name": "RelatedTo", "status": "planned", "note": "dokładnie jedno z: CustomerId, LeadId, OpportunityId" }
+          ],
+          "commands": [
+            { "name": "LogSalesActivity", "status": "planned", "roles": ["Salesperson", "SalesManager", "Admin"], "backlog": ["CRM-011"], "emits": ["SalesActivityLogged"], "api": null, "code": null, "note": null },
+            { "name": "AddSalesNote", "status": "planned", "roles": ["Salesperson", "SalesManager", "Admin"], "backlog": ["CRM-010"], "emits": ["SalesNoteAdded"], "api": null, "code": null, "note": null },
+            { "name": "ScheduleFollowUp", "status": "planned", "roles": ["Salesperson", "SalesManager", "Admin"], "backlog": ["CRM-012"], "emits": ["FollowUpScheduled"], "api": null, "code": null, "note": null },
+            { "name": "CompleteFollowUp", "status": "planned", "roles": ["Salesperson", "SalesManager", "Admin"], "backlog": ["CRM-013"], "emits": ["FollowUpCompleted"], "api": null, "code": null, "note": null }
+          ],
+          "events": ["SalesActivityLogged", "SalesNoteAdded", "FollowUpScheduled", "FollowUpCompleted"],
+          "rules": [
+            { "rule": "Kontakt ma typ, datę i autora.", "status": "planned" },
+            { "rule": "Notatka ma treść, autora i datę; notatek nie usuwa się fizycznie (Q-17).", "status": "planned" },
+            { "rule": "Follow-up ma termin i właściciela; zaległy, gdy termin minął, a zadania nie wykonano.", "status": "planned" },
+            { "rule": "Wynik kontaktu nie zmienia pipeline automatycznie — handlowiec wykonuje komendę w Sales Pipeline.", "status": "planned" }
+          ],
+          "open_questions": ["Q-09", "Q-17"]
+        }
+      ],
+      "queries": [
+        { "name": "GetMyFollowUpsQuery", "status": "planned", "roles": ["Salesperson", "SalesManager", "Admin"], "backlog": ["CRM-013"], "api": null, "code": null, "note": "dzisiejsze, przyszłe, zaległe" }
+      ],
+      "read_models": [],
+      "components": []
+    },
+    {
+      "name": "Order Capture",
+      "responsibility": "Zamówienie handlowca od szkicu do przekazania do backoffice oraz poprawki po zwrocie.",
+      "roles": ["Salesperson", "SalesManager", "Admin"],
+      "backlog": ["CRM-018", "CRM-019", "CRM-020", "CRM-021"],
+      "code_folders": [
+        { "name": "SalesOrders", "exists": false }
+      ],
+      "open_questions": [],
+      "aggregates": [
+        {
+          "name": "SalesOrder",
+          "status": "planned",
+          "code": null,
+          "entities": [
+            { "name": "SalesOrderLine", "status": "planned", "note": "zakres danych pozycji — Q-05" }
+          ],
+          "value_objects": [
+            { "name": "SalesOrderId", "status": "planned", "note": "T-03" },
+            { "name": "OrderNumber", "status": "planned", "note": "numer zamówienia" },
+            { "name": "SalesOrderStatus", "status": "planned", "note": "Draft (Robocze), SubmittedToBackoffice (Przekazane do backoffice), ReturnedToSales (Zwrócone do handlowca)" },
+            { "name": "OrderCustomerSnapshot", "status": "planned", "note": "dane klienta z chwili utworzenia (CRM-018)" },
+            { "name": "Money", "status": "planned", "note": "wartości pozycji i zamówienia" }
+          ],
+          "commands": [
+            { "name": "CreateOrderFromOpportunity", "status": "planned", "roles": ["Salesperson", "SalesManager", "Admin"], "backlog": ["CRM-018"], "emits": ["SalesOrderCreated"], "api": null, "code": null, "note": "handler sprawdza zapytaniem do Sales Pipeline, czy szansa jest wygrana (Q-04), i pobiera snapshot klienta" },
+            { "name": "AddOrderLine", "status": "planned", "roles": ["Salesperson", "SalesManager", "Admin"], "backlog": ["CRM-018", "CRM-019"], "emits": [], "api": null, "code": null, "note": "edycja szkicu; pełna lista komend po Q-05" },
+            { "name": "SubmitOrderToBackoffice", "status": "planned", "roles": ["Salesperson", "SalesManager", "Admin"], "backlog": ["CRM-020", "CRM-026"], "emits": ["SalesOrderSubmittedToBackoffice"], "api": null, "code": null, "note": "także ponownie po zwrocie z backoffice" },
+            { "name": "ReopenSalesOrderAfterReturn", "status": "planned", "roles": [], "backlog": ["CRM-026"], "emits": [], "api": null, "code": null, "note": "polityka po BackofficeOrderReturnedToSalesIntegrationEvent" }
+          ],
+          "events": ["SalesOrderCreated", "SalesOrderSubmittedToBackoffice"],
+          "rules": [
+            { "rule": "Zamówienie powstaje z wygranej szansy (Q-04).", "status": "planned" },
+            { "rule": "Szkic można zapisać bez przekazania do backoffice.", "status": "planned" },
+            { "rule": "Niekompletnego zamówienia nie można przekazać; lista braków jest widoczna przed przekazaniem (CRM-019, Q-05).", "status": "planned" },
+            { "rule": "Po przekazaniu handlowiec nie może dowolnie edytować zamówienia; edycja ponownie tylko po zwrocie.", "status": "planned" }
+          ],
+          "open_questions": ["Q-04", "Q-05", "Q-07", "Q-08"]
+        }
+      ],
+      "queries": [
+        { "name": "GetSalesOrderStatusQuery", "status": "planned", "roles": ["Salesperson", "SalesManager", "BackofficeUser", "BackofficeManager", "Admin"], "backlog": ["CRM-021"], "api": null, "code": null, "note": "status z backoffice, data zmiany, komentarze dla sprzedaży, wymagana reakcja" }
+      ],
+      "read_models": [],
+      "components": []
+    },
+    {
+      "name": "Order Backoffice",
+      "responsibility": "Obsługa przekazanych zamówień: kolejka, przydział, weryfikacja, statusy realizacji, zwroty i zamknięcie.",
+      "roles": ["BackofficeUser", "BackofficeManager", "Admin"],
+      "backlog": ["CRM-022", "CRM-023", "CRM-024", "CRM-025", "CRM-026", "CRM-027"],
+      "code_folders": [
+        { "name": "BackofficeOrders", "exists": false }
+      ],
+      "open_questions": ["Q-14"],
+      "aggregates": [
+        {
+          "name": "BackofficeOrderCase",
+          "status": "planned",
+          "code": null,
+          "entities": [
+            { "name": "CaseHistoryEntry", "status": "planned", "note": "historia statusów, przypisań i zwrotów (CRM-023, CRM-024, CRM-026)" },
+            { "name": "BackofficeComment", "status": "planned", "note": "autor, data, widoczność: wewnętrzny albo dla sprzedaży (CRM-025)" }
+          ],
+          "value_objects": [
+            { "name": "BackofficeOrderCaseId", "status": "planned", "note": "T-03" },
+            { "name": "BackofficeOrderStatus", "status": "planned", "note": "New, InVerification, InFulfillment, AwaitingInformation, Blocked, ReturnedToSales, Completed, Cancelled (słownik §6.3)" },
+            { "name": "BlockingReason", "status": "planned", "note": "wymagany przy Blocked" },
+            { "name": "ReturnToSalesComment", "status": "planned", "note": "wymagany przy zwrocie" },
+            { "name": "CompletionDate", "status": "planned", "note": "zapisywana przy Completed" },
+            { "name": "CancellationReason", "status": "decision_needed", "note": "Q-07" },
+            { "name": "SubmittedOrderSnapshot", "status": "planned", "note": "dane przekazanego zamówienia potrzebne do obsługi" }
+          ],
+          "commands": [
+            { "name": "OpenBackofficeOrderCase", "status": "planned", "roles": [], "backlog": ["CRM-020", "CRM-022"], "emits": ["BackofficeOrderCaseOpened"], "api": null, "code": null, "note": "polityka po SalesOrderSubmittedIntegrationEvent; przy ponownym przekazaniu wznawia sprawę (Q-08)" },
+            { "name": "AssignBackofficeOrder", "status": "planned", "roles": ["BackofficeManager", "Admin", "BackofficeUser"], "backlog": ["CRM-023"], "emits": ["BackofficeOrderAssigned"], "api": null, "code": null, "note": "BackofficeUser — tylko przypisanie do siebie (doc/02 §1.3)" },
+            { "name": "ChangeBackofficeOrderStatus", "status": "planned", "roles": ["BackofficeUser", "BackofficeManager", "Admin"], "backlog": ["CRM-024"], "emits": ["BackofficeOrderStatusChanged", "BackofficeOrderBlocked"], "api": null, "code": null, "note": "BackofficeOrderBlocked przy przejściu do Blocked (z BlockingReason), BackofficeOrderStatusChanged przy pozostałych" },
+            { "name": "AddBackofficeComment", "status": "planned", "roles": ["BackofficeUser", "BackofficeManager", "Admin"], "backlog": ["CRM-025"], "emits": ["BackofficeCommentAdded"], "api": null, "code": null, "note": null },
+            { "name": "ReturnOrderToSales", "status": "planned", "roles": ["BackofficeUser", "BackofficeManager", "Admin"], "backlog": ["CRM-026"], "emits": ["BackofficeOrderReturnedToSales"], "api": null, "code": null, "note": "komentarz wymagany" },
+            { "name": "CompleteOrder", "status": "planned", "roles": ["BackofficeUser", "BackofficeManager", "Admin"], "backlog": ["CRM-027"], "emits": ["BackofficeOrderCompleted"], "api": null, "code": null, "note": "zapisuje datę zakończenia" },
+            { "name": "CancelOrder", "status": "decision_needed", "roles": [], "backlog": [], "emits": ["BackofficeOrderCancelled"], "api": null, "code": null, "note": "Q-07" }
+          ],
+          "events": ["BackofficeOrderCaseOpened", "BackofficeOrderAssigned", "BackofficeOrderStatusChanged", "BackofficeOrderBlocked", "BackofficeCommentAdded", "BackofficeOrderReturnedToSales", "BackofficeOrderCompleted", "BackofficeOrderCancelled"],
+          "rules": [
+            { "rule": "Przejścia statusów są zgodne z dozwolonym workflow (Q-06).", "status": "planned" },
+            { "rule": "Zablokowanie wymaga BlockingReason.", "status": "planned" },
+            { "rule": "Zwrot do handlowca wymaga komentarza.", "status": "planned" },
+            { "rule": "Zakończenie zapisuje datę zakończenia.", "status": "planned" },
+            { "rule": "Każda zmiana statusu i przypisania trafia do historii sprawy.", "status": "planned" },
+            { "rule": "Komentarze nie znikają po zmianie statusu.", "status": "planned" },
+            { "rule": "Backoffice nie zmienia pipeline sprzedaży ani danych SalesOrder.", "status": "planned" }
+          ],
+          "open_questions": ["Q-06", "Q-07", "Q-08"]
+        }
+      ],
+      "queries": [
+        { "name": "GetBackofficeQueueQuery", "status": "planned", "roles": ["BackofficeUser", "BackofficeManager", "Admin"], "backlog": ["CRM-022"], "api": null, "code": null, "note": "filtrowanie po statusie, sortowanie po dacie przekazania" },
+        { "name": "GetBackofficeOrderDetailsQuery", "status": "planned", "roles": ["BackofficeUser", "BackofficeManager", "Admin"], "backlog": ["CRM-022"], "api": null, "code": null, "note": null }
+      ],
+      "read_models": [],
+      "components": []
+    },
+    {
+      "name": "Reporting & KPI",
+      "responsibility": "Read modele i projekcje dla dashboardów i raportów; tylko odczyt.",
+      "roles": ["Salesperson", "SalesManager", "BackofficeUser", "BackofficeManager", "Admin"],
+      "backlog": ["CRM-031", "CRM-032", "CRM-033", "CRM-034"],
+      "code_folders": [
+        { "name": "Reporting", "exists": false }
+      ],
+      "open_questions": ["Q-15"],
+      "aggregates": [],
+      "queries": [],
+      "read_models": [
+        { "name": "SalespersonDashboard", "status": "planned", "roles": ["Salesperson", "SalesManager", "Admin"], "backlog": ["CRM-031"], "note": "aktywne leady i szanse, dzisiejsze i zaległe follow-upy, zamówienia zwrócone do poprawy" },
+        { "name": "SalesManagerDashboard", "status": "planned", "roles": ["SalesManager", "Admin"], "backlog": ["CRM-032"], "note": "szanse na etapach, wartość pipeline, wygrane i przegrane, aktywność handlowców" },
+        { "name": "BackofficeReport", "status": "planned", "roles": ["BackofficeUser", "BackofficeManager", "Admin"], "backlog": ["CRM-033"], "note": "BackofficeUser — widok ograniczony; zamówienia według statusów, zablokowane, zwrócone, średni czas obsługi" },
+        { "name": "ReportExport", "status": "planned", "roles": ["SalesManager", "BackofficeManager", "Admin"], "backlog": ["CRM-034"], "note": "CSV/XLSX, Could Have" }
+      ],
+      "components": []
+    },
+    {
+      "name": "Identity & Access",
+      "responsibility": "Tożsamość użytkownika, role, uprawnienia i audyt; konta i role utrzymuje dostawca tożsamości.",
+      "roles": ["Admin"],
+      "backlog": ["CRM-028", "CRM-029", "CRM-030", "CRM-035"],
+      "code_folders": [
+        { "name": "Identity", "exists": true }
+      ],
+      "open_questions": ["Q-12", "Q-13"],
+      "aggregates": [],
+      "queries": [],
+      "read_models": [],
+      "components": [
+        { "name": "SimpleIdServer", "status": "implemented", "code": "Integrations/Sso", "note": "konta, grupy i role — źródło prawdy dla pojęć User i Role ze słownika (Q-12)" },
+        { "name": "ICurrentUser", "status": "implemented", "code": "Backend/src/SDC.CRM.Application/Abstractions/Identity/ICurrentUser.cs", "note": "identyfikator (UUID wyliczony z sub), nazwa, e-mail, role z tokena" },
+        { "name": "CrmRoles", "status": "implemented", "code": "Backend/src/SDC.CRM.Api/Authorization/CrmRoles.cs", "note": "Salesperson, SalesManager, BackofficeUser, BackofficeManager, Admin" },
+        { "name": "CrmPolicies", "status": "partial", "code": "Backend/src/SDC.CRM.Api/Authorization/CrmPolicies.cs", "note": "leads:register, leads:view-own; kolejne polityki per macierz doc/02 §3" },
+        { "name": "AuditLog", "status": "planned", "code": null, "note": "CRM-030: użytkownik, czas, akcja, identyfikator obiektu; zasilany zdarzeniami audytowanymi (T-05)" }
+      ]
+    },
+    {
+      "name": "Integrations",
+      "responsibility": "Warstwa antykorupcyjna do ERP, fakturowania, e-maila, kalendarza i płatności.",
+      "roles": ["BackofficeManager", "Admin"],
+      "backlog": ["CRM-037", "CRM-038"],
+      "code_folders": [
+        { "name": "Integrations", "exists": false }
+      ],
+      "open_questions": ["Q-10", "Q-11"],
+      "aggregates": [
+        {
+          "name": "IntegrationJob",
+          "status": "planned",
+          "code": null,
+          "entities": [
+            { "name": "IntegrationAttempt", "status": "planned", "note": "pojedyncza próba wysyłki, wynik, błąd bez danych wrażliwych" }
+          ],
+          "value_objects": [
+            { "name": "IntegrationJobStatus", "status": "planned", "note": "Pending, Succeeded, Failed" },
+            { "name": "ExternalSystemName", "status": "planned", "note": "np. ERP" }
+          ],
+          "commands": [
+            { "name": "ExportOrderToErp", "status": "planned", "roles": [], "backlog": ["CRM-038"], "emits": ["IntegrationJobSucceeded", "IntegrationJobFailed"], "api": null, "code": null, "note": "polityka po BackofficeOrderCompletedIntegrationEvent (Q-10)" },
+            { "name": "RetryIntegrationJob", "status": "planned", "roles": ["BackofficeManager", "Admin"], "backlog": ["CRM-038"], "emits": ["IntegrationJobSucceeded", "IntegrationJobFailed"], "api": null, "code": null, "note": "role do potwierdzenia (Q-10)" }
+          ],
+          "events": ["IntegrationJobSucceeded", "IntegrationJobFailed"],
+          "rules": [
+            { "rule": "Liczba automatycznych ponowień jest ograniczona; po jej wyczerpaniu błąd jest widoczny dla uprawnionych (CRM-038, Q-10).", "status": "planned" },
+            { "rule": "DTO systemów zewnętrznych nie trafiają do domeny.", "status": "planned" }
+          ],
+          "open_questions": ["Q-10"]
+        },
+        {
+          "name": "ExternalSystemMapping",
+          "status": "planned",
+          "code": null,
+          "entities": [],
+          "value_objects": [
+            { "name": "ExternalId", "status": "planned", "note": "identyfikator w systemie zewnętrznym" }
+          ],
+          "commands": [
+            { "name": "RecordExternalId", "status": "planned", "roles": [], "backlog": ["CRM-038"], "emits": [], "api": null, "code": null, "note": "polityka po udanej wysyłce" }
+          ],
+          "events": [],
+          "rules": [
+            { "rule": "Identyfikator CRM ma co najwyżej jeden identyfikator w danym systemie zewnętrznym.", "status": "planned" }
+          ],
+          "open_questions": ["Q-10"]
+        }
+      ],
+      "queries": [],
+      "read_models": [],
+      "components": []
+    }
+  ]
+}
+

@@ -1,0 +1,18 @@
+{
+  "comment": "Plik generowany przez tools/render-diagrams.ps1 - nie edytuj ręcznie.",
+  "renderer": "@mermaid-js/mermaid-cli@12.0.0",
+  "config": "tools/mermaid-config.json",
+  "diagrams": [
+    { "name": "00_system_context", "source": "ai_readable/system_context.md", "png": "diagrams/png/00_system_context.png", "sha256": "61a2421beb17102ee4db57f94a40b7de0b76825ca0ff4e2c895467ec073af31a" },
+    { "name": "01_context_map_with_entities_value_objects", "source": "ai_readable/context_map.md", "png": "diagrams/png/01_context_map_with_entities_value_objects.png", "sha256": "ab76a1b84d789a14f4513c2ac0a1634a718b6315c8add8164cf31a9031c18995" },
+    { "name": "02_process_01_lead_pipeline", "source": "ai_readable/processes/process_01_lead_pipeline.md", "png": "diagrams/png/02_process_01_lead_pipeline.png", "sha256": "c48c4fb3f836612ea41bc537632b93bc12e4fdb7e822977f51e747aebfa9ed36" },
+    { "name": "03_process_02_customer_management", "source": "ai_readable/processes/process_02_customer_management.md", "png": "diagrams/png/03_process_02_customer_management.png", "sha256": "f4051337fbb19fbff03dfeda423ba20c22ddd5643f0deea39ae78b8da2aeff16" },
+    { "name": "04_process_03_sales_activity", "source": "ai_readable/processes/process_03_sales_activity.md", "png": "diagrams/png/04_process_03_sales_activity.png", "sha256": "acb7cb1cb80c2a09584cc4910feefe4c455557ffdbee2c1bd53e8d403bff6442" },
+    { "name": "05_process_04_sales_finalization_order_capture", "source": "ai_readable/processes/process_04_sales_finalization_order_capture.md", "png": "diagrams/png/05_process_04_sales_finalization_order_capture.png", "sha256": "614ac03ecb0026660e2f98ee8c794118d643a371644ce77e10d4a53658c0d2a1" },
+    { "name": "06_process_05_backoffice_order_processing", "source": "ai_readable/processes/process_05_backoffice_order_processing.md", "png": "diagrams/png/06_process_05_backoffice_order_processing.png", "sha256": "c7cf8a575bb5d7f1a4e528228029c8c95796ec9574aa7b30e0ff7521e1d0ac02" },
+    { "name": "07_process_06_integration_invoice_payment_reporting", "source": "ai_readable/processes/process_06_integration_invoice_payment_reporting.md", "png": "diagrams/png/07_process_06_integration_invoice_payment_reporting.png", "sha256": "91214e22740e0d59a99d03130c03722322103042c674286452da25e06db57e8b" },
+    { "name": "08_sales_order_lifecycle", "source": "ai_readable/order_status_lifecycle.md", "png": "diagrams/png/08_sales_order_lifecycle.png", "sha256": "0392368d8fa34e0bf7dc447a4dbc1d865f53c10760a50c47bd0ca2c21fd228b4" },
+    { "name": "09_backoffice_order_case_lifecycle", "source": "ai_readable/order_status_lifecycle.md", "png": "diagrams/png/09_backoffice_order_case_lifecycle.png", "sha256": "d4de6f2e49238f12b7bf618ba9d162f7512805e6dc60e06d778d5bad302eac9a" },
+    { "name": "10_delivery_plan", "source": "../04-plan-realizacji-pbi.md", "png": "diagrams/png/10_delivery_plan.png", "sha256": "b836c142614e62f18b5a5b30602767cc906aeb63a738aa0b35791ec9a5616e4d" }
+  ]
+}

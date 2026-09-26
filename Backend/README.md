@@ -42,8 +42,11 @@ Opis działania testów API: [Jak działają testy API](#jak-działają-testy-ap
 
 Zgodnie z kolejnością wdrażania z instrukcji projektu:
 
-1. **Zarejestruj leada** — `POST /api/leads`
-2. **Pokaż moje leady** — `GET /api/leads/mine?salespersonId={guid}`
+1. **Zarejestruj leada** — `POST /api/leads` (odpowiedź `201 Created` z `{ "id": "<guid>" }`)
+2. **Pokaż moje leady** — `GET /api/leads/mine`
+
+Oba endpointy wymagają tokena dostępowego SSO (`Authorization: Bearer ...`) z rolą `Salesperson`,
+`SalesManager` lub `Admin`. Właściciel leada jest ustalany z tokena (`CurrentUser`), nigdy z treści żądania.
 
 Agregat `Lead` pilnuje reguł:
 
@@ -211,14 +214,27 @@ współdzielone i testy mogą biec równolegle. `Leads/LeadsEndpointsTests` spra
 ## Przykładowe żądanie
 
 ```bash
+# ACCESS_TOKEN - token dostępowy z SSO dla użytkownika z rolą Salesperson
+# (np. zaloguj się w aplikacji web i skopiuj token albo użyj przycisku "Authorize" w dokumencie OpenAPI)
 curl -X POST http://localhost:5080/api/leads \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
+  -H "X-Correlation-ID: demo-request-1" \
   -d '{
     "companyName": "Acme Sp. z o.o.",
     "contactName": "Jan Kowalski",
     "contactEmail": "jan.kowalski@acme.test",
     "contactPhone": "+48 600 100 200",
-    "source": "Targi",
-    "assignedSalespersonId": "00000000-0000-0000-0000-000000000001"
+    "source": "Targi"
   }'
 ```
+
+Odpowiedź `201 Created` (nagłówek `X-Correlation-ID: demo-request-1`):
+
+```json
+{ "id": "3f0c2f1e-8a47-4d3b-9a4b-2f6d9c1e5a77" }
+```
+
+Bez tokena API zwraca `401`, dla ról spoza sprzedaży `403`, a przy naruszeniu reguły biznesowej
+`400` z `ProblemDetails` (np. `"detail": "A lead must have a company name."`).
+

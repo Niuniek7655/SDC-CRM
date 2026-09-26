@@ -73,6 +73,11 @@ Frontend/Mobile
     /SDC.CRM.Mobile.Tests
 ```
 
+Current repository layout: platform-independent code (ViewModels, API client, session logic, routes and
+abstractions) lives in `Frontend/Mobile/src/SDC.CRM.Mobile.Core` (`net10.0`) so it can be unit tested in
+`Frontend/Mobile/tests/SDC.CRM.Mobile.Tests` without MAUI workloads; `Frontend/Mobile/src/SDC.CRM.Mobile` keeps
+views, Shell, platform adapters (SecureStorage, WebAuthenticator, Connectivity) and DI. Put new testable logic in Core.
+
 Keep feature-specific files grouped when the feature grows, for example:
 
 ```text

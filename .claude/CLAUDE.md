@@ -1,6 +1,8 @@
 # CLAUDE.md
 
-## Project context
+<!-- Synchronized with .github/copilot-instructions.md (source of truth). Only the Claude rule-file paths differ; update both files together. -->
+
+## Project overview
 
 This repository contains a CRM system for sales and backoffice operations.
 
@@ -8,66 +10,27 @@ The repository is organized as a multi-application product:
 
 - `Backend/**` — .NET backend for CRM domain, API, application logic, persistence and integrations.
 - `Frontend/Web/**` — dedicated web frontend application.
-- `Frontend/Mobile/**` — dedicated mobile frontend application, planned as a .NET MAUI app.
+- `Frontend/Mobile/**` — dedicated .NET MAUI mobile application.
 - `doc/**` — product, domain and architecture documentation.
-- `integrations/**` — integration-related code and documentation when introduced.
+- `Integrations/**` — integration-related code and documentation (currently the local SSO/IAM environment).
+- `infra/**` — local development infrastructure configuration used by the root `docker-compose.yml`.
 
-The mobile app is not a wrapper around the web app. Treat `frontend/Web` and `frontend/Mobile` as separate clients that consume backend APIs and share CRM domain language, not UI implementation.
+The mobile app is not a wrapper around the web app. Treat `Frontend/Web` and `Frontend/Mobile` as separate clients that consume backend APIs and share CRM domain language, not UI implementation.
 
-## Instruction scope by repository location
-
-Use specialized rules according to the path being changed:
-
-| Location | Application area | Claude rules |
-|---|---|---|
-| `Backend/**` | Backend .NET modular monolith | all `.claude/rules/*.md` files (backend stack, clean architecture, vertical slices, DDD, CQRS, persistence, messaging, observability, Docker and testing) |
-| `Frontend/Web/**` | Dedicated web frontend | general frontend guidance from this file and future web-specific rules |
-| `Frontend/Mobile/**` | Dedicated .NET MAUI mobile app | `.claude/rules/15-mobile-dotnet-maui.md` |
-| `doc/**` | Documentation | product/domain documentation guidance |
-| `.github/**`, `.cursor/**`, `.claude/**` | AI tooling configuration | keep rules concise, path-scoped and non-conflicting |
-
-When changing files under `Frontend/Mobile/**`, prioritize the mobile-specific .NET MAUI rules over generic frontend guidance. When changing files under `Frontend/Web/**`, do not apply MAUI/XAML/MVVM-specific rules unless explicitly requested.
-
-## System capabilities
-
-The system should support:
-
-- customer management,
-- lead management,
-- sales pipeline,
-- sales contacts, notes and follow-ups,
-- order creation by salespeople,
-- backoffice order processing,
-- basic reporting and KPI,
-- roles and access control,
-- future integrations with external systems.
-
-## Main business workflow
-
-Use this workflow as the main product context:
+The core business workflow is:
 
 ```text
-Lead -> Opportunity -> SalesOrder -> BackofficeOrderCase
+Lead -> Opportunity -> SalesOrder -> BackofficeOrderCase -> Completed / Cancelled / ReturnedToSales
 ```
 
-A salesperson registers and works on a lead.  
-A qualified lead becomes an opportunity in the sales pipeline.  
-A won opportunity can become a sales order.  
-A submitted sales order is processed by backoffice.
+The system is used by:
 
-## Main users
+- salespeople who register leads, manage customers, plan follow-ups, add notes and create orders,
+- sales managers who monitor sales pipeline and team activity,
+- backoffice users who process submitted orders,
+- administrators who manage users, roles and configuration.
 
-Use these user roles as business context:
-
-- `Salesperson` — registers leads, manages customer contact, adds notes, plans follow-ups and creates orders.
-- `SalesManager` — monitors the pipeline, sales activity and sales team performance.
-- `BackofficeUser` — processes orders submitted by sales.
-- `BackofficeManager` — manages the backoffice queue, assignments and processing status.
-- `Admin` — manages users, roles and basic configuration.
-
-## Domain language
-
-Use these terms consistently in backend, web frontend, mobile frontend, tests, API contracts and documentation:
+Use domain language consistently. Prefer these terms in code, tests, API contracts, web UI models and mobile UI models:
 
 - `Customer`
 - `ContactPerson`
@@ -80,45 +43,331 @@ Use these terms consistently in backend, web frontend, mobile frontend, tests, A
 - `BackofficeOrderCase`
 - `OrderStatus`
 
-Avoid introducing alternative names such as `Deal`, `Prospect`, `Ticket`, `Item` or `Record` unless the project documentation explicitly changes the domain language.
+Avoid introducing alternative names such as `Deal`, `Prospect`, `Ticket`, `Item` or `Record` unless the domain model is explicitly changed.
 
-## Current project phase
+## Instruction scope by repository location
 
-The project is still in an early product-definition phase.
+Apply the specialized instruction files according to path:
 
-Do not assume detailed technical architecture, framework-specific conventions, persistence strategy, testing framework, API style or frontend framework unless they already exist in the repository or are explicitly requested.
+| Location | Application area | Specialized instructions |
+|---|---|---|
+| `Backend/**` | Backend .NET modular monolith | all `.claude/rules/*.md` files (backend stack, clean architecture, vertical slices, DDD, CQRS, persistence, messaging, observability, Docker and testing) |
+| `Frontend/Web/**` | Dedicated web frontend | General frontend rules in this file and any future web-specific instruction files |
+| `Frontend/Mobile/**` | Dedicated .NET MAUI mobile app | `.claude/rules/15-mobile-dotnet-maui.md` |
+| `doc/**` | Documentation | Product/domain documentation rules in this file |
+| `.github/**`, `.cursor/**`, `.claude/**` | AI tooling configuration | Keep instruction files concise, path-scoped where possible and non-conflicting |
 
-The current known application locations are:
+When changing files under `Frontend/Mobile/**`, prioritize the mobile-specific .NET MAUI instructions over generic frontend guidance. When changing files under `Frontend/Web/**`, do not apply MAUI/XAML/MVVM-specific rules unless explicitly requested.
+
+## Repository layout
+
+Follow the existing repository structure:
 
 ```text
-Backend/**
-Frontend/Web/**
-Frontend/Mobile/**
-doc/**
-integrations/**
+/Backend
+  /src                       # SDC.CRM.Domain, SDC.CRM.Application, SDC.CRM.Infrastructure, SDC.CRM.Api
+  /tests                     # Domain, Application and Api unit tests, Api.IntegrationTests (TestServer)
+  SDC.CRM.Backend.slnf       # all backend projects without the MAUI app
+  Dockerfile
+
+/Frontend
+  /Web                       # Angular SPA
+  /Mobile
+    /src
+      /SDC.CRM.Mobile        # .NET MAUI app: views, Shell, platform adapters, DI (MauiProgram)
+      /SDC.CRM.Mobile.Core   # net10.0: view models, API client, session logic (unit-testable)
+    /tests
+      /SDC.CRM.Mobile.Tests
+
+/doc                         # product and domain documentation
+/Integrations                # local SSO (SimpleIdServer) environment and provisioning scripts
+/infra                       # local observability/infrastructure configuration
+
+/.github
+  /instructions
+  /prompts
+  /workflows                 # CI: backend, web, mobile
+
+/.cursor
+  /rules
+
+/.claude
+  /rules
 ```
 
-When implementation details are missing:
+Root files: `SDC-CRM.slnx` (solution), `global.json` (Microsoft.Testing.Platform for `dotnet test`),
+`dotnet-tools.json` (local tools, e.g. `dotnet-ef`), `docker-compose.yml` and `.env.example` (local infrastructure).
 
-- prefer simple, conventional solutions,
-- do not introduce unnecessary abstractions,
-- do not add speculative features,
-- leave a clear TODO or question when a business or technical decision is required.
+Keep product and domain documentation under `/doc`. Do not put full backlog or long domain specifications in this file.
 
-## Important product rule
+## Build, run and test
 
-Prefer user workflows over generic CRUD thinking.
+When adding or changing backend code, run the backend build and tests from the repository root.
+`global.json` enables the Microsoft.Testing.Platform mode of `dotnet test`, which TUnit requires on the .NET 10 SDK.
 
-Core workflows should be described in business language, for example:
+```bash
+dotnet build Backend/SDC.CRM.Backend.slnf
+dotnet test --solution Backend/SDC.CRM.Backend.slnf
+```
 
-- register lead,
-- qualify lead,
-- add sales note,
-- schedule follow-up,
-- win opportunity,
-- create sales order,
-- submit order to backoffice,
-- return order to sales,
-- complete order.
+When the persistence model changes, add an EF Core migration and apply migrations explicitly
+(the API never creates or migrates the schema at startup):
 
-Mobile workflows should be smaller, focused and optimized for quick field usage. Do not assume every web screen must exist on mobile.
+```bash
+dotnet tool restore
+dotnet ef migrations add <Name> --project Backend/src/SDC.CRM.Infrastructure --startup-project Backend/src/SDC.CRM.Api --output-dir Persistence/Migrations
+dotnet ef database update --project Backend/src/SDC.CRM.Infrastructure --startup-project Backend/src/SDC.CRM.Api
+```
+
+When adding or changing the web frontend, run install, build and tests from `Frontend/Web`
+(Node version from `.nvmrc`):
+
+```bash
+npm ci
+npm run build
+npm run test:ci
+```
+
+When adding or changing the mobile frontend, run from the repository root:
+
+```bash
+dotnet workload restore Frontend/Mobile/src/SDC.CRM.Mobile/SDC.CRM.Mobile.csproj
+dotnet build Frontend/Mobile/src/SDC.CRM.Mobile/SDC.CRM.Mobile.csproj -f net10.0-android
+dotnet build Frontend/Mobile/src/SDC.CRM.Mobile/SDC.CRM.Mobile.csproj -f net10.0-windows10.0.19041.0
+dotnet test --project Frontend/Mobile/tests/SDC.CRM.Mobile.Tests/SDC.CRM.Mobile.Tests.csproj
+```
+
+The CI workflows in `.github/workflows` run the same commands. If the repository scripts, README files or
+CI configuration define different commands, follow them.
+
+If the local machine does not have the required .NET MAUI workload, mobile SDK, Node version or Docker, do not fake validation. State that the build could not be fully validated and include the exact command attempted and the exact error.
+
+## Architecture rules
+
+Use a domain-first modular monolith for the backend unless the repository already defines another architecture.
+
+Keep clear boundaries between these areas:
+
+- Customer Management
+- Sales Pipeline
+- Sales Activities
+- Order Capture
+- Order Backoffice
+- Reporting
+- Identity and Access
+- Integrations
+
+Use these layers where applicable:
+
+```text
+API / Presentation
+Application
+Domain
+Infrastructure
+```
+
+Rules:
+
+- Keep business rules out of controllers, UI components, MAUI pages and code-behind files.
+- Keep domain logic in aggregates, entities, value objects or domain services.
+- Keep infrastructure concerns out of the domain layer.
+- Use read models or projections for reports.
+- Use an anti-corruption layer for external integrations such as ERP, invoicing, e-mail, calendar and payments.
+- Keep mobile and web clients thin: they may contain presentation logic, validation UX and offline/cache behavior, but backend authorization and core business rules remain server-side.
+
+## Backend guidelines
+
+Use business-oriented commands and methods.
+
+Prefer names such as:
+
+- `CreateLead`
+- `AssignLeadToSalesperson`
+- `QualifyLead`
+- `RejectLead`
+- `CreateOpportunityFromLead`
+- `ChangeOpportunityStage`
+- `WinOpportunity`
+- `LoseOpportunity`
+- `CreateOrderFromOpportunity`
+- `SubmitOrderToBackoffice`
+- `AssignBackofficeOrder`
+- `ChangeBackofficeOrderStatus`
+- `ReturnOrderToSales`
+- `CompleteOrder`
+
+Avoid generic names such as:
+
+- `UpdateEntity`
+- `ProcessData`
+- `SaveModel`
+- `HandleRequest`
+
+Important business rules to preserve:
+
+- A rejected lead cannot be qualified.
+- A rejected lead must have a rejection reason.
+- A lost opportunity must have a lost reason.
+- An order cannot be submitted to backoffice if required data is missing.
+- A submitted order cannot be freely edited by a salesperson.
+- A blocked order must have a blocking reason.
+- A completed order must have a completion date.
+- Backoffice status transitions must follow the allowed workflow.
+
+Do not expose persistence entities directly from API endpoints. Use request/response contracts or DTOs.
+
+## Frontend guidelines
+
+Build UI around user workflows, not database tables.
+
+Important screens include:
+
+- My Leads
+- Lead Details
+- Customer 360
+- Opportunity Pipeline
+- Follow-up List
+- Create Sales Order
+- Order Status
+- Backoffice Queue
+- Backoffice Order Details
+- Manager Dashboards
+
+`Frontend/Web` and `Frontend/Mobile` should implement equivalent business workflows where required, but they do not need identical UI structures. The web app may optimize for desktop productivity; the mobile app should optimize for fast task completion, intermittent connectivity and mobile ergonomics.
+
+Frontend authorization is not enough. Hide unavailable actions in the UI, but always rely on backend authorization for enforcement.
+
+Forms should:
+
+- show required fields clearly,
+- display backend validation errors,
+- preserve user input after validation failure,
+- avoid overloading initial lead registration with unnecessary fields,
+- allow draft order creation before submission to backoffice.
+
+For mobile-specific UI, state, navigation, storage, API and performance rules, use `.claude/rules/15-mobile-dotnet-maui.md`.
+
+## Authorization and security
+
+Always enforce authentication and authorization on the backend.
+
+Core roles:
+
+- `Salesperson`
+- `SalesManager`
+- `BackofficeUser`
+- `BackofficeManager`
+- `Admin`
+
+Rules:
+
+- A salesperson usually works only with their own leads, opportunities, activities and orders.
+- A sales manager may manage team sales data.
+- A backoffice user works on submitted orders, not on the full sales pipeline.
+- An admin manages users, roles and configuration.
+- Never hardcode secrets.
+- Keep environment-specific settings out of `appsettings.json`: local development values belong in `appsettings.Development.json` (or an optional, git-ignored `.env` for Docker Compose), other environments use environment variables. Missing required settings must fail fast at startup.
+- Do not log sensitive customer data.
+- Validate all external input on the backend.
+- Mobile and web clients must treat tokens, refresh tokens and customer data as sensitive.
+- Do not rely on client-side role checks as a security boundary.
+
+## Auditing
+
+Audit important business changes, especially:
+
+- lead assignment,
+- lead rejection,
+- opportunity stage change,
+- opportunity won or lost,
+- order submission to backoffice,
+- backoffice order assignment,
+- order status change,
+- order return to sales,
+- order completion,
+- order cancellation,
+- role or permission change.
+
+Audit records should include the user, timestamp, action and business object identifier.
+
+## Testing expectations
+
+Add tests for business behavior, not only technical implementation.
+
+Prefer behavior-oriented test names following the convention from `99-tdd-tunit-nsubstitute`
+(`TestedMethod__When_scenario__Should_expected_result`), for example:
+
+```text
+RejectLead__When_rejection_reason_is_missing__Should_fail_validation
+QualifyLead__When_lead_is_rejected__Should_fail
+LoseOpportunity__When_lost_reason_is_missing__Should_fail_validation
+SubmitOrderToBackoffice__When_order_is_incomplete__Should_return_validation_error
+ReturnOrderToSales__When_comment_is_missing__Should_fail_validation
+CompleteOrder__When_order_can_be_completed__Should_set_completion_date
+```
+
+For each business feature, cover:
+
+- the main success path,
+- at least one validation or authorization failure,
+- relevant state transition,
+- relevant audit or domain event behavior if implemented.
+
+For mobile features, test ViewModels, application services, API clients, storage abstractions and mapping logic. Do not put core behavior only in MAUI page code-behind because it is harder to test.
+
+## Implementation order
+
+When implementing new functionality, prefer small vertical slices in this order:
+
+1. Register new lead with minimal customer and contact data.
+2. Show my leads list.
+3. Show lead details.
+4. Add note or contact to lead.
+5. Qualify lead into opportunity.
+6. Manage opportunity pipeline stages.
+7. Mark opportunity as won or lost.
+8. Create sales order from won opportunity.
+9. Submit order to backoffice.
+10. Process order in backoffice queue.
+11. Return order to sales if data is missing.
+12. Complete order.
+13. Add reports and dashboards.
+14. Add external integrations.
+
+A vertical slice should include backend behavior, API contract, relevant web or mobile frontend change, tests and authorization checks.
+
+## Do not
+
+Do not:
+
+- implement core workflows as generic CRUD only,
+- put business logic only in controllers, handlers, web components, MAUI pages or code-behind files,
+- leak EF Core entities or persistence models into API contracts,
+- leak external integration DTOs into domain models,
+- add speculative features outside the requested story,
+- introduce microservices before the modular monolith boundaries are proven,
+- physically delete business records that require history,
+- bypass backend authorization because the frontend or mobile app hides a button,
+- mix `Frontend/Web` implementation details into `Frontend/Mobile`,
+- build the mobile app as a WebView wrapper around the web frontend unless explicitly requested.
+
+## When requirements are unclear
+
+Prefer the simplest behavior that supports the main CRM workflow.
+
+Do not invent complex business rules. Add a clear TODO with the business question, for example:
+
+```csharp
+// TODO Business decision: Can a salesperson edit an order after submitting it to backoffice?
+```
+
+Common business questions to clarify:
+
+- Can a lead exist without a customer?
+- Can an order be created without a won opportunity?
+- Can backoffice cancel an order?
+- Which backoffice status transitions are allowed?
+- Which reports are required for MVP?
+- Which integrations are required for MVP?
+- Which workflows must be available in mobile MVP versus web MVP?
+- Which mobile features must work offline?

@@ -25,7 +25,7 @@
 
 .EXAMPLE
     ./register-sdc-crm-clients.ps1
-    ./register-sdc-crm-clients.ps1 -Authority http://localhost:5001 -Realm master
+    ./register-sdc-crm-clients.ps1 -Authority http://localhost:5001 -Realm master -AdminClientSecret <secret>
     ./register-sdc-crm-clients.ps1 -AdminUserLogin administrator -AdminUserRoles Admin,SalesManager
     ./register-sdc-crm-clients.ps1 -SkipUserAssignment
     ./register-sdc-crm-clients.ps1 -SkipTestUsers
@@ -35,7 +35,8 @@ param(
     [string]$Authority = "http://localhost:5001",
     [string]$Realm = "master",
     [string]$AdminClientId = "SIDS-manager",
-    [string]$AdminClientSecret = "password",
+    # Defaults to SIDS_MANAGER_CLIENT_SECRET (manage-sso.ps1 passes the value from .env) or "password".
+    [string]$AdminClientSecret = $(if ($env:SIDS_MANAGER_CLIENT_SECRET) { $env:SIDS_MANAGER_CLIENT_SECRET } else { "password" }),
     [string[]]$WebRedirectUris = @("http://localhost:4200/", "http://localhost:4200"),
     [string]$MobileRedirectUri = "com.sdc.crm.mobile://callback",
     [string]$MobilePostLogoutRedirectUri = "com.sdc.crm.mobile://signout",
@@ -127,10 +128,10 @@ function ConvertTo-SidJson {
 
 function Get-AdminToken {
     Write-Step "Requesting management token ($AdminClientId)"
-    $scopes = @(
-        "openid", "profile", "role",
-        "clients", "scopes", "apiresources", "users", "groups", "realms"
-    ) -join " "
+    # Management scopes only. Do not request 'role' (or openid/profile): once the 'role' mapper is included in
+    # access tokens (step 4b), SimpleIdServer 6.0.4 fails with HTTP 500 when it maps the role claim for a
+    # client_credentials token, which has no user.
+    $scopes = @("clients", "scopes", "apiresources", "users", "groups", "realms") -join " "
 
     $body = @{
         grant_type    = "client_credentials"

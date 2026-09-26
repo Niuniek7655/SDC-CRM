@@ -35,7 +35,32 @@ param(
 
 $ErrorActionPreference = "Stop"
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$DiscoveryUrl = "http://localhost:5001/master/.well-known/openid-configuration"
+
+# Reads the optional .env next to docker-compose.yml (KEY=VALUE lines, '#' comments), so this script uses the
+# same ports and SIDS-manager secret as the containers. Process environment variables take precedence,
+# exactly as in docker compose.
+function Get-SsoSetting {
+    param([string]$Name, [string]$Default)
+    $fromProcess = [Environment]::GetEnvironmentVariable($Name)
+    if ($fromProcess) { return $fromProcess }
+    $envFile = Join-Path $ScriptDir ".env"
+    if (Test-Path -LiteralPath $envFile) {
+        foreach ($line in Get-Content -LiteralPath $envFile) {
+            if ($line -match "^\s*$([regex]::Escape($Name))\s*=\s*(.*?)\s*$") {
+                $value = $Matches[1].Trim('"', "'")
+                if ($value) { return $value }
+            }
+        }
+    }
+    return $Default
+}
+
+$IdServerPort = Get-SsoSetting "IDSERVER_PORT" "5001"
+$WebsitePort = Get-SsoSetting "WEBSITE_PORT" "5002"
+$AdminClientSecret = Get-SsoSetting "SIDS_MANAGER_CLIENT_SECRET" "password"
+$Authority = "http://localhost:$IdServerPort"
+$AdminPanelUrl = "http://localhost:$WebsitePort/master/clients"
+$DiscoveryUrl = "$Authority/master/.well-known/openid-configuration"
 
 function Write-ColorMessage {
     param([string]$Message, [string]$Color = "White")
@@ -73,7 +98,7 @@ function Invoke-SsoProvisioning {
         throw "IdServer did not respond within $TimeoutSeconds s - run '.\manage-sso.ps1 provision' once it is up."
     }
     Write-ColorMessage "Provisioning SDC-CRM IAM objects (register-sdc-crm-clients.ps1)..." "Cyan"
-    & (Join-Path $ScriptDir "register-sdc-crm-clients.ps1")
+    & (Join-Path $ScriptDir "register-sdc-crm-clients.ps1") -Authority $Authority -AdminClientSecret $AdminClientSecret
 }
 
 function Start-SsoEnvironment {
@@ -92,8 +117,8 @@ function Start-SsoEnvironment {
 
     Write-ColorMessage ""
     Write-ColorMessage "URLs:" "Cyan"
-    Write-ColorMessage "   Identity Server:  http://localhost:5001/master" "White"
-    Write-ColorMessage "   Admin Panel:      http://localhost:5002/master/clients" "White"
+    Write-ColorMessage "   Identity Server:  $Authority/master" "White"
+    Write-ColorMessage "   Admin Panel:      $AdminPanelUrl" "White"
     Write-ColorMessage ""
     Write-ColorMessage "Login credentials:" "Cyan"
     Write-ColorMessage "   Login:    administrator" "White"
@@ -124,19 +149,19 @@ function Get-SsoStatus {
         Write-ColorMessage "Testing connections..." "Cyan"
 
         try {
-            $null = Invoke-WebRequest -Uri "http://localhost:5001/.well-known/openid-configuration" -TimeoutSec 5 -UseBasicParsing
-            Write-ColorMessage "   [OK]   IdServer:       http://localhost:5001 - RUNNING" "Green"
+            $null = Invoke-WebRequest -Uri $DiscoveryUrl -TimeoutSec 5 -UseBasicParsing
+            Write-ColorMessage "   [OK]   IdServer:       $Authority - RUNNING" "Green"
         }
         catch {
-            Write-ColorMessage "   [FAIL] IdServer:       http://localhost:5001 - NOT RESPONDING" "Red"
+            Write-ColorMessage "   [FAIL] IdServer:       $Authority - NOT RESPONDING" "Red"
         }
 
         try {
-            $null = Invoke-WebRequest -Uri "http://localhost:5002/master/clients" -TimeoutSec 5 -UseBasicParsing
-            Write-ColorMessage "   [OK]   Admin Panel:    http://localhost:5002/master/clients - RUNNING" "Green"
+            $null = Invoke-WebRequest -Uri $AdminPanelUrl -TimeoutSec 5 -UseBasicParsing
+            Write-ColorMessage "   [OK]   Admin Panel:    $AdminPanelUrl - RUNNING" "Green"
         }
         catch {
-            Write-ColorMessage "   [FAIL] Admin Panel:    http://localhost:5002/master/clients - NOT RESPONDING" "Red"
+            Write-ColorMessage "   [FAIL] Admin Panel:    $AdminPanelUrl - NOT RESPONDING" "Red"
         }
     }
     finally {
@@ -178,8 +203,8 @@ function Test-SsoEndpoints {
 
     $endpoints = @(
         @{ Name = "OpenID Configuration"; Url = $DiscoveryUrl }
-        @{ Name = "JWKS"; Url = "http://localhost:5001/master/jwks" }
-        @{ Name = "Admin Panel"; Url = "http://localhost:5002/master/clients" }
+        @{ Name = "JWKS"; Url = "$Authority/master/jwks" }
+        @{ Name = "Admin Panel"; Url = $AdminPanelUrl }
     )
 
     foreach ($endpoint in $endpoints) {
@@ -213,7 +238,7 @@ function Show-Help {
     Write-ColorMessage ""
     Write-ColorMessage "Requirements:" "Yellow"
     Write-ColorMessage "   - Docker running (Docker Desktop or Docker Engine, e.g. in WSL)" "White"
-    Write-ColorMessage "   - Free ports: 5001, 5002, 5433" "White"
+    Write-ColorMessage "   - Free ports: $IdServerPort, $WebsitePort and the PostgreSQL port (default 5001, 5002, 5433)" "White"
 }
 
 # Main logic

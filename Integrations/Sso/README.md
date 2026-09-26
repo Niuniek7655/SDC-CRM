@@ -63,6 +63,10 @@ Plain `docker compose up -d` only starts the containers - run `./manage-sso.ps1 
 database user `idserver`, image version `6.0.4`). To change them, copy `.env.example` to `.env`
 in this directory (the file is git-ignored) and edit the values. PostgreSQL applies the database
 credentials only when its volume is created, so run `docker compose down -v` after changing them.
+`manage-sso.ps1` reads `IDSERVER_PORT`, `WEBSITE_PORT` and `SIDS_MANAGER_CLIENT_SECRET` from the same `.env`
+(process environment variables take precedence, as in docker compose) and passes the authority and the secret
+to `register-sdc-crm-clients.ps1`. `SIDS_MANAGER_CLIENT_SECRET` does not change the secret stored in IdServer -
+change it for the `SIDS-manager` client in the admin panel first, then set the same value in `.env`.
 Never reuse these development values in a production identity provider.
 
 ### 2. Wait for initialization
@@ -232,7 +236,9 @@ environments on the next `./manage-sso.ps1 start` - no manual step in the admin 
 > and expects numeric enums (`access_token_type`), so the script sends back the current values of all fields
 > it does not change. `POST users` ignores credentials - the password is added with
 > `POST users/{id}/credentials` (`{"active":true,"credential":{"type":"pwd","value":"..."}}`, note `type`,
-> not `credential_type`). `PUT scopes/{id}/mappers/{mapperId}` also overwrites every mapper field.
+> not `credential_type`). `PUT scopes/{id}/mappers/{mapperId}` also overwrites every mapper field. Once the `role`
+> mapper is included in access tokens, a `client_credentials` token request that asks for the `role` scope fails
+> with HTTP 500 (there is no user to map), so the management token requests only the management scopes.
 
 > Logout: the `end_session` page of SimpleIdServer asks the user to confirm with **Revoke session**; after that it
 > redirects to the `post_logout_redirect_uri` (e.g. `com.sdc.crm.mobile://signout`). Refresh tokens are not

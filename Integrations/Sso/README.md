@@ -199,14 +199,19 @@ The script authenticates with the seeded `SIDS-manager` client and provisions
   `BackofficeManager`, `Admin`),
 - the two **public** clients `sdc-crm-web` (SPA) and `sdc-crm-mobile` (mobile),
   created with `is_public=true` (no secret, Authorization Code + PKCE),
+- the `role` claim in **access tokens** (the built-in `role` scope emits it only in id_token/userinfo by
+  default; the API authorizes on the JWT access token, so its mapper gets `include_in_accesstoken=true`),
 - one group per role (`SDC CRM <Role>`) with the matching role attached,
-- assignment of the `administrator` user to the requested role group(s).
+- assignment of the `administrator` user to the requested role group(s),
+- test users with the password `Test123!` (see below).
 
-The script is idempotent - it is safe to re-run - and it reconciles existing clients with the definitions
-in the script: redirect URIs and post-logout redirect URIs missing in SimpleIdServer are added, while URIs
-added manually and all other client settings are kept. A URI introduced in the script (e.g. the mobile logout
-return address `com.sdc.crm.mobile://signout`) therefore reaches existing environments on the next
-`./manage-sso.ps1 start` - no manual step in the admin panel. Useful switches:
+The script is idempotent - it is safe to re-run - and it reconciles existing environments with the definitions
+in the script: redirect URIs and post-logout redirect URIs missing in SimpleIdServer are added, clients created
+by older script versions are switched to public clients (`is_public=true`; otherwise the code exchange fails
+with `invalid_client`), the `role` access-token mapper is enabled and test users without a password receive
+one. URIs added manually, passwords changed manually and all other settings are kept. Changes introduced in the
+script (e.g. the mobile logout return address `com.sdc.crm.mobile://signout`) therefore reach existing
+environments on the next `./manage-sso.ps1 start` - no manual step in the admin panel. Useful switches:
 
 ```powershell
 # Give the administrator more than just the Admin role
@@ -225,7 +230,13 @@ return address `com.sdc.crm.mobile://signout`) therefore reaches existing enviro
 > (`client_type: "SPA"` / `"MOBILE"`) and translatable fields as `client_name#en`; `PUT clients/{id}` addresses
 > the client by its technical id (GUID, not `client_id`), overwrites every field of the client details form
 > and expects numeric enums (`access_token_type`), so the script sends back the current values of all fields
-> it does not change.
+> it does not change. `POST users` ignores credentials - the password is added with
+> `POST users/{id}/credentials` (`{"active":true,"credential":{"type":"pwd","value":"..."}}`, note `type`,
+> not `credential_type`). `PUT scopes/{id}/mappers/{mapperId}` also overwrites every mapper field.
+
+> Logout: the `end_session` page of SimpleIdServer asks the user to confirm with **Revoke session**; after that it
+> redirects to the `post_logout_redirect_uri` (e.g. `com.sdc.crm.mobile://signout`). Refresh tokens are not
+> revoked by `end_session` - the clients delete them locally on logout.
 
 After running the script, **sign out / sign in again** so a fresh token carries
 the `role` claim.

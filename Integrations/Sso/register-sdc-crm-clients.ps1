@@ -213,6 +213,23 @@ function Get-UserByLogin([string]$login) {
     return ($users | Where-Object { $_.name -eq $login } | Select-Object -First 1)
 }
 
+# Adds the test password to a user that has no password credential yet (idempotent;
+# an existing password, e.g. changed manually, is left untouched).
+function Set-TestUserPassword {
+    param([string]$UserId, [string]$Login)
+    $user = Invoke-Sid -Method Get -Path "users/$UserId"
+    if (@($user.credentials | Where-Object { $_.type -eq "pwd" }).Count -gt 0) {
+        Write-Skip "user '$Login' already has a password"
+        return
+    }
+    # UserCredential JSON uses 'type' (not 'credential_type'); the server hashes the value.
+    Invoke-Sid -Method Post -Path "users/$UserId/credentials" -Body @{
+        active     = $true
+        credential = @{ type = "pwd"; value = $TestUserPassword }
+    } | Out-Null
+    Write-Ok "set password for user '$Login'"
+}
+
 # Values from $Expected that are missing in $Actual (exact, case-sensitive match, as for redirect URIs).
 function Get-MissingValues {
     param($Expected, $Actual)
@@ -253,13 +270,17 @@ function Sync-PublicClient {
 
     $missingRedirectUris = @(Get-MissingValues $Definition.RedirectUris $client.redirect_uris)
     $missingPostLogoutUris = @(Get-MissingValues $Definition.PostLogoutRedirectUris $client.post_logout_redirect_uris)
-    if ($missingRedirectUris.Count -eq 0 -and $missingPostLogoutUris.Count -eq 0) {
+    # A browser / mobile app cannot keep a secret: without is_public the token endpoint
+    # rejects the authorization code exchange with 'invalid_client'.
+    $mustBecomePublic = -not [bool]$client.is_public
+    if ($missingRedirectUris.Count -eq 0 -and $missingPostLogoutUris.Count -eq 0 -and -not $mustBecomePublic) {
         Write-Skip "client $clientId already exists and is up to date"
         return
     }
 
     $update = [ordered]@{}
     foreach ($field in $ClientUpdateFields) { $update[$field] = $client.$field }
+    $update["is_public"] = $true
     $update["redirect_uris"] = @(@($client.redirect_uris | Where-Object { $_ }) + $missingRedirectUris)
     $update["post_logout_redirect_uris"] = @(@($client.post_logout_redirect_uris | Where-Object { $_ }) + $missingPostLogoutUris)
     $update["client_name"] = if ($client."client_name#en") { $client."client_name#en" } else { $Definition.ClientName }
@@ -276,9 +297,11 @@ function Sync-PublicClient {
     $updated = Get-SidClient -ClientId $clientId
     $stillMissing = @(Get-MissingValues $Definition.RedirectUris $updated.redirect_uris) +
         @(Get-MissingValues $Definition.PostLogoutRedirectUris $updated.post_logout_redirect_uris)
+    if (-not [bool]$updated.is_public) { $stillMissing += "is_public=true" }
     if ($stillMissing.Count -gt 0) {
         throw "client $clientId was updated, but it still misses: $($stillMissing -join ', ')"
     }
+    if ($mustBecomePublic) { Write-Ok "marked $clientId as a public client (PKCE, no secret)" }
     foreach ($uri in $missingRedirectUris) { Write-Ok "added redirect URI $uri to $clientId" }
     foreach ($uri in $missingPostLogoutUris) { Write-Ok "added post-logout redirect URI $uri to $clientId" }
 }
@@ -380,6 +403,38 @@ if (-not $SkipRoles) {
                 throw
             }
         }
+    }
+}
+
+# 4b) 'role' claim in access tokens ------------------------------------------
+# The API authorizes on the 'role' claim of the JWT access token, but the built-in 'role'
+# scope only emits it in id_token/userinfo. Enable IncludeInAccessToken on its mapper.
+Write-Step "Ensuring the 'role' claim is included in access tokens"
+$roleScope = Get-ScopeByName "role"
+if (-not $roleScope) {
+    Write-Warn2 "scope 'role' not found - the API will not receive roles in access tokens"
+}
+else {
+    $roleScope = Invoke-Sid -Method Get -Path "scopes/$($roleScope.id)"
+    $roleMapper = @($roleScope.mappers | Where-Object { $_.target_claim_path -eq "role" }) | Select-Object -First 1
+    if (-not $roleMapper) {
+        Write-Warn2 "scope 'role' has no 'role' claim mapper - add it in the admin panel"
+    }
+    elseif ([bool]$roleMapper.include_in_accesstoken) {
+        Write-Skip "'role' claim already included in access tokens"
+    }
+    else {
+        # PUT overwrites every mapper field, so the current values are sent back unchanged.
+        Invoke-Sid -Method Put -Path "scopes/$($roleScope.id)/mappers/$($roleMapper.id)" -Body @{
+            source_user_attribute  = $roleMapper.source_user_attribute
+            source_user_property   = $roleMapper.source_user_property
+            target_claim_path      = $roleMapper.target_claim_path
+            saml_attribute_name    = $roleMapper.saml_attribute_name
+            token_claim_json_type  = $roleMapper.token_claim_json_type
+            is_multivalued         = [bool]$roleMapper.is_multivalued
+            include_in_accesstoken = $true
+        } | Out-Null
+        Write-Ok "'role' claim is now included in access tokens"
     }
 }
 
@@ -505,7 +560,7 @@ if (-not $SkipTestUsers -and -not $SkipGroups -and -not $SkipRoles) {
             $userId = Get-EntityId $existingUser
         }
         else {
-            # Create user via SimpleIdServer API with password credential
+            # POST users ignores credentials - the password is added by Set-TestUserPassword below.
             try {
                 $newUser = Invoke-Sid -Method Post -Path "users" -Body @{
                     id         = [guid]::NewGuid().ToString()
@@ -516,22 +571,19 @@ if (-not $SkipTestUsers -and -not $SkipGroups -and -not $SkipRoles) {
                     email_verified = $true
                     create_datetime = $now
                     update_datetime = $now
-                    credentials = @(
-                        @{
-                            id              = [guid]::NewGuid().ToString()
-                            credential_type = "pwd"
-                            value           = $TestUserPassword
-                            is_active       = $true
-                        }
-                    )
                 }
-                Write-Ok "created user '$login' ($email) with password"
+                Write-Ok "created user '$login' ($email)"
                 $userId = Get-EntityId $newUser
             }
             catch {
                 Write-Warn2 "could not create user '$login': $($_.Exception.Message)"
                 continue
             }
+        }
+
+        if ($userId) {
+            try { Set-TestUserPassword -UserId $userId -Login $login }
+            catch { Write-Warn2 "could not set password for user '$login': $($_.Exception.Message)" }
         }
 
 

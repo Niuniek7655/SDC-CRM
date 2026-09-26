@@ -51,6 +51,7 @@ Brief projektu: [`doc/CRM.md`](../CRM.md).
 | 07 | [Proces 6 — integracje, raporty, audyt](diagrams/png/07_process_06_integration_invoice_payment_reporting.png) | `ai_readable/processes/process_06_integration_invoice_payment_reporting.md` |
 | 08 | [Statusy `SalesOrder`](diagrams/png/08_sales_order_lifecycle.png) | `ai_readable/order_status_lifecycle.md` |
 | 09 | [Statusy `BackofficeOrderCase`](diagrams/png/09_backoffice_order_case_lifecycle.png) | `ai_readable/order_status_lifecycle.md` |
+| 10 | [Plan realizacji — etapy i kamienie milowe](diagrams/png/10_delivery_plan.png) | [`doc/04-plan-realizacji-pbi.md`](../04-plan-realizacji-pbi.md) |
 
 ## Najważniejsza granica
 
@@ -71,8 +72,8 @@ SalesOrder (Order Capture)             !=  BackofficeOrderCase (Order Backoffice
    ./doc/crm_ddd_ai_agent_package/tools/render-diagrams.ps1
    ```
 
-3. Sprawdź spójność (JSON, odwołania do komend i zdarzeń, zakazane aliasy, linki, pytania `Q-xx`,
-   aktualność PNG, zgodność ze słownikiem i backlogiem):
+3. Sprawdź spójność (JSON, odwołania do komend i zdarzeń, zakazane aliasy — także w instrukcjach AI w `.github`,
+   `.claude` i `.cursor` — linki, pytania `Q-xx`, aktualność PNG, zgodność ze słownikiem i backlogiem):
 
    ```powershell
    ./doc/crm_ddd_ai_agent_package/tools/validate-docs.ps1

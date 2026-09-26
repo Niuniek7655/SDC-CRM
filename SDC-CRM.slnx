@@ -110,6 +110,7 @@
     <File Path="doc/01-slownik-jezyka-wszechobecnego.md" />
     <File Path="doc/02-uzytkownicy-role-uprawnienia.md" />
     <File Path="doc/03-backlog-user-stories.md" />
+    <File Path="doc/04-plan-realizacji-pbi.md" />
     <File Path="doc/CRM.md" />
     <File Path="doc/README.md" />
   </Folder>
@@ -154,6 +155,7 @@
     <File Path="doc/crm_ddd_ai_agent_package/diagrams/png/07_process_06_integration_invoice_payment_reporting.png" />
     <File Path="doc/crm_ddd_ai_agent_package/diagrams/png/08_sales_order_lifecycle.png" />
     <File Path="doc/crm_ddd_ai_agent_package/diagrams/png/09_backoffice_order_case_lifecycle.png" />
+    <File Path="doc/crm_ddd_ai_agent_package/diagrams/png/10_delivery_plan.png" />
   </Folder>
   <Folder Name="/doc/crm_ddd_ai_agent_package/tools/">
     <File Path="doc/crm_ddd_ai_agent_package/tools/DiagramSources.ps1" />

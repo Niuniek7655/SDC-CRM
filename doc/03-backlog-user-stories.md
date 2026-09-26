@@ -5,6 +5,8 @@
 Ten dokument zawiera listę user stories do realizacji projektu CRM.  
 Każda story ma miejsce na oznaczenie statusu realizacji.
 
+Kolejność realizacji story (z zależnościami, etapami i kamieniami milowymi): [04-plan-realizacji-pbi.md](04-plan-realizacji-pbi.md).
+
 ## Legenda statusów
 
 Dla każdej story można uzupełnić pole `Status`.

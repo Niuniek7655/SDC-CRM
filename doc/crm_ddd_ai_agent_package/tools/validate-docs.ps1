@@ -8,8 +8,12 @@
     - odwołania między modelem, katalogiem zdarzeń i procesami (konteksty, agregaty, komendy, zapytania, zdarzenia, kroki),
     - zgodność plików .md z .json (nazwy i stany: ✔ ◐ ○ ❓),
     - zgodność słownika (doc/01: konteksty, zdarzenia) i backlogu (doc/03: konteksty, agregaty, komendy, zdarzenia) z modelem,
-    - zakazane aliasy nazw (dozwolone tylko w ai_readable/naming_decisions.md),
-    - pytania Q-xx i decyzje T-xx zdefiniowane w ai_readable/open_questions.md,
+    - spójność backlogu (tytuł, priorytet, status i zaznaczony checkbox story zgodne z widokiem zbiorczym),
+    - plan realizacji (doc/04): każda story z backlogu dokładnie raz, nazwy/priorytety/statusy jak w backlogu,
+      ciągła numeracja, zależności tylko od PBI wcześniejszych i o nie niższym priorytecie, opis każdego EN-xx i P-xx,
+    - zakazane aliasy nazw (dozwolone tylko w ai_readable/naming_decisions.md) w doc/ oraz w instrukcjach AI
+      (.github/copilot-instructions.md, .github/instructions, .github/prompts, .claude, .cursor/rules),
+    - pytania Q-xx i decyzje T-xx zdefiniowane w ai_readable/open_questions.md (także w instrukcjach AI),
     - lokalne linki w plikach Markdown,
     - aktualność PNG względem źródeł Mermaid (diagrams/diagrams.manifest.json),
     - ścieżki kodu i foldery wskazane w JSON.
@@ -325,6 +329,73 @@ if ($model -and $catalog -and $processes) {
             }
         }
     }
+
+    # ---------------------------------------------------------------- backlog: story <-> widok zbiorczy
+    $summary = @{}
+    foreach ($row in [regex]::Matches($backlog, '(?m)^\|\s*(CRM-\d{3})\s*\|[^|]*\|\s*([^|]+?)\s*\|\s*(Must Have|Should Have|Could Have)\s*\|\s*([^|]+?)\s*\|\s*$')) {
+        $summary[$row.Groups[1].Value] = [pscustomobject]@{ Name = $row.Groups[2].Value; Priority = $row.Groups[3].Value; Status = $row.Groups[4].Value }
+    }
+    foreach ($story in [regex]::Matches($backlog, '(?ms)^## (CRM-\d{3}) — (.+?)\s*$(.*?)(?=^## CRM-|^# |\z)')) {
+        $id = $story.Groups[1].Value
+        if (-not $summary.ContainsKey($id)) { Add-Error "Backlog $id - brak w widoku zbiorczym"; continue }
+        $expected = $summary[$id]
+        $body = $story.Groups[3].Value
+        if ($story.Groups[2].Value -ne $expected.Name) { Add-Error "Backlog $id - tytuł różni się od widoku zbiorczego ('$($expected.Name)')" }
+        $priority = [regex]::Match($body, '\*\*Priorytet:\*\*\s*(.+?)\s*$', 'Multiline').Groups[1].Value
+        if ($priority -ne $expected.Priority) { Add-Error "Backlog $id - priorytet '$priority' różni się od widoku zbiorczego ('$($expected.Priority)')" }
+        $status = [regex]::Match($body, '\*\*Status:\*\*\s*(.+?)\s*$', 'Multiline').Groups[1].Value
+        if ($status -ne $expected.Status) { Add-Error "Backlog $id - status '$status' różni się od widoku zbiorczego ('$($expected.Status)')" }
+        $checked = @([regex]::Matches($body, '(?m)^- \[x\] (.+?)\s*$') | ForEach-Object { $_.Groups[1].Value })
+        if ($checked.Count -ne 1 -or $checked[0] -ne $expected.Status) { Add-Error "Backlog $id - zaznaczony status ($($checked -join ', ')) różni się od '$($expected.Status)'" }
+    }
+
+    # ---------------------------------------------------------------- plan realizacji (doc/04)
+    $planPath = Join-Path $docRoot '04-plan-realizacji-pbi.md'
+    if (-not (Test-Path $planPath)) { Add-Error 'Brak doc/04-plan-realizacji-pbi.md' }
+    else {
+        $plan = Read-Text $planPath
+        $rank = @{ 'Must Have' = 3; 'Should Have' = 2; 'Could Have' = 1 }
+        $planRows = @(foreach ($row in [regex]::Matches($plan, '(?m)^\|\s*(\d+)\s*\|\s*((?:CRM-\d{3}|EN-\d{2}|P-\d{2}))\s*\|(.*)$')) {
+                $cells = @($row.Groups[3].Value -split '\|' | ForEach-Object { $_.Trim() })
+                [pscustomobject]@{
+                    Order = [int]$row.Groups[1].Value; Id = $row.Groups[2].Value; Name = $cells[0]; Type = $cells[1]
+                    Priority = $cells[2]; Status = $cells[3]; Depends = $cells[4]
+                }
+            })
+        $positions = @{}
+        for ($i = 0; $i -lt $planRows.Count; $i++) {
+            $row = $planRows[$i]
+            if ($row.Order -ne $i + 1) { Add-Error "Plan - kolejność $($row.Order) ($($row.Id)): oczekiwano $($i + 1)" }
+            if ($positions.ContainsKey($row.Id)) { Add-Error "Plan - $($row.Id) występuje więcej niż raz" }
+            $positions[$row.Id] = $row
+        }
+        foreach ($id in $summary.Keys) { if (-not $positions.ContainsKey($id)) { Add-Error "Plan - brak story $id z backlogu" } }
+        foreach ($row in $planRows) {
+            $label = "Plan - $($row.Id)"
+            if ($row.Id -like 'CRM-*') {
+                if (-not $summary.ContainsKey($row.Id)) { Add-Error "$label - brak w backlogu"; continue }
+                $expected = $summary[$row.Id]
+                if ($row.Type -ne 'story') { Add-Error "$label - typ '$($row.Type)', oczekiwano 'story'" }
+                if ($row.Name -ne $expected.Name) { Add-Error "$label - nazwa różni się od backlogu ('$($expected.Name)')" }
+                if ($row.Priority -ne $expected.Priority) { Add-Error "$label - priorytet '$($row.Priority)', w backlogu '$($expected.Priority)'" }
+                if ($row.Status -ne $expected.Status) { Add-Error "$label - status '$($row.Status)', w backlogu '$($expected.Status)'" }
+            }
+            else {
+                $expectedType = if ($row.Id -like 'EN-*') { 'enabler' } else { 'propozycja' }
+                if ($row.Type -ne $expectedType) { Add-Error "$label - typ '$($row.Type)', oczekiwano '$expectedType'" }
+                if ($row.Status -ne 'Propozycja') { Add-Error "$label - status '$($row.Status)', oczekiwano 'Propozycja'" }
+                if ($plan -notmatch ('(?m)^\|\s*' + [regex]::Escape($row.Id) + '\s*\|')) { Add-Error "$label - brak opisu w tabeli enablerów lub propozycji" }
+            }
+            foreach ($dependency in [regex]::Matches($row.Depends, '(?:CRM-\d{3}|EN-\d{2}|P-\d{2})')) {
+                $dep = $dependency.Value
+                if (-not $positions.ContainsKey($dep)) { Add-Error "$label - zależność $dep spoza planu"; continue }
+                if ($positions[$dep].Order -ge $row.Order) { Add-Error "$label - zależność $dep jest później w kolejności" }
+                $itemRank = if ($rank.ContainsKey($row.Priority)) { $rank[$row.Priority] } else { 0 }
+                $depRank = if ($rank.ContainsKey($positions[$dep].Priority)) { $rank[$positions[$dep].Priority] } else { 0 }
+                if ($depRank -lt $itemRank) { Add-Error "$label ($($row.Priority)) - zależy od $dep o niższym priorytecie ($($positions[$dep].Priority))" }
+            }
+        }
+    }
 }
 
 # -------------------------------------------------------------------- pliki Markdown i JSON w doc/
@@ -339,25 +410,35 @@ $forbidden = @(
     '\bSubmitSalesOrder\b', '\bActivityRegistered\b', '\bNoteAdded\b', '\bAddCustomerNote\b', '\bUpdateCustomerData\b',
     '\bCustomerUpdated\b', '\bRegister(PhoneCall|Meeting|EmailActivity|Contact)\b', '\b(Complete|Reject)OrderProcess\b',
     '\bProvideMissingInfo\b', '\bRequestMissingInformation\b', 'Lead & Pipeline', 'Sales Order Capture',
-    'Backoffice Order Processing', 'Reporting & Analytics', 'Integration Context', '\bSales Activity\b'
+    'Backoffice Order Processing', 'Reporting & Analytics', 'Integration Context', '\bSales Activity\b',
+    '\bCreateSalesOrder', '\bCompleteBackofficeOrder', '\bAssignLead\b', '\bCreateOpportunity\b', '\bAddNote\b',
+    '\bAssignOrderProcess\b', 'Identity and Access'
 )
 $openQuestions = Read-Text (Join-Path $aiRoot 'open_questions.md')
 $definedIds = @([regex]::Matches($openQuestions, '(?m)^\|\s*([QT]-\d{2})\s*\|') | ForEach-Object { $_.Groups[1].Value })
 
+function Test-ForbiddenAliases {
+    param([string]$Relative, [string]$Text, [string[]]$Patterns)
+    foreach ($pattern in $Patterns) {
+        foreach ($match in [regex]::Matches($Text, $pattern)) {
+            $line = ($Text.Substring(0, $match.Index) -split "`n").Count
+            Add-Error "$Relative`:$line - zakazany alias '$($match.Value)' (ai_readable/naming_decisions.md)"
+        }
+    }
+}
+
+function Test-QuestionReferences {
+    param([string]$Relative, [string]$Text)
+    foreach ($match in [regex]::Matches($Text, '\b[QT]-\d{2}\b')) {
+        if ($definedIds -notcontains $match.Value) { Add-Error "$Relative - niezdefiniowane $($match.Value) (ai_readable/open_questions.md)" }
+    }
+}
+
 foreach ($file in $docFiles) {
     $relative = Get-RelativePath -Root $repoRoot -Path $file.FullName
     $text = Read-Text $file.FullName
-    if ($file.FullName -ne $namingFile) {
-        foreach ($pattern in $forbidden) {
-            foreach ($match in [regex]::Matches($text, $pattern)) {
-                $line = ($text.Substring(0, $match.Index) -split "`n").Count
-                Add-Error "$relative`:$line - zakazany alias '$($match.Value)' (ai_readable/naming_decisions.md)"
-            }
-        }
-    }
-    foreach ($match in [regex]::Matches($text, '\b[QT]-\d{2}\b')) {
-        if ($definedIds -notcontains $match.Value) { Add-Error "$relative - niezdefiniowane $($match.Value) (ai_readable/open_questions.md)" }
-    }
+    if ($file.FullName -ne $namingFile) { Test-ForbiddenAliases -Relative $relative -Text $text -Patterns $forbidden }
+    Test-QuestionReferences -Relative $relative -Text $text
     if ($file.Extension -eq '.md') {
         foreach ($link in [regex]::Matches($text, '\]\(([^)\s]+)\)')) {
             $target = $link.Groups[1].Value
@@ -366,6 +447,25 @@ foreach ($file in $docFiles) {
             if (-not (Test-Path (Join-Path $file.DirectoryName $path))) { Add-Error "$relative - martwy link $target" }
         }
     }
+}
+
+# -------------------------------------------------------------------- instrukcje AI (.github, .claude, .cursor)
+# Instrukcje wymieniają "Deal" celowo jako nazwę zakazaną, więc ten wzorzec jest tu pomijany.
+$instructionFiles = @()
+foreach ($relative in '.github/copilot-instructions.md', '.claude/CLAUDE.md') {
+    $path = Join-Path $repoRoot $relative
+    if (Test-Path $path) { $instructionFiles += Get-Item $path }
+}
+foreach ($relative in '.github/instructions', '.github/prompts', '.claude/rules', '.cursor/rules') {
+    $path = Join-Path $repoRoot $relative
+    if (Test-Path $path) { $instructionFiles += @(Get-ChildItem $path -Recurse -File -Include '*.md', '*.mdc') }
+}
+$instructionPatterns = @($forbidden | Where-Object { $_ -ne '\bDeal\b' })
+foreach ($file in $instructionFiles) {
+    $relative = Get-RelativePath -Root $repoRoot -Path $file.FullName
+    $text = Read-Text $file.FullName
+    Test-ForbiddenAliases -Relative $relative -Text $text -Patterns $instructionPatterns
+    Test-QuestionReferences -Relative $relative -Text $text
 }
 
 # -------------------------------------------------------------------- diagramy
@@ -397,5 +497,5 @@ if ($script:Errors.Count -gt 0) {
     Write-Host "Znaleziono błędów: $($script:Errors.Count)." -ForegroundColor Red
     exit 1
 }
-Write-Host "Dokumentacja spójna: $($docFiles.Count) plików, $($diagramSources.Count) diagramów." -ForegroundColor Green
+Write-Host "Dokumentacja spójna: $($docFiles.Count) plików w doc/, $($instructionFiles.Count) plików instrukcji AI, $($diagramSources.Count) diagramów." -ForegroundColor Green
 

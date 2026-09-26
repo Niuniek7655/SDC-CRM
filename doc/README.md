@@ -17,7 +17,11 @@ Punkt wyjścia: `CRM.md` — pierwotny brief projektu (założenia bazowe: modu�
 3. `03-backlog-user-stories.md`  
    Lista epików i user stories z miejscem na oznaczanie statusu realizacji.
 
-4. `crm_ddd_ai_agent_package/`  
+4. `04-plan-realizacji-pbi.md`  
+   Kolejność realizacji wszystkich PBI (story z backlogu, enablery techniczne, propozycje uzupełnień) z zależnościami,
+   etapami, kamieniami milowymi i decyzjami wymaganymi przed etapami.
+
+5. `crm_ddd_ai_agent_package/`  
    Model domeny DDD dla ludzi i agentów AI: bounded contexty, agregaty, zdarzenia, procesy, diagramy
    oraz aktualny stan implementacji. Punkt startowy: [crm_ddd_ai_agent_package/README.md](crm_ddd_ai_agent_package/README.md).
 
@@ -36,6 +40,9 @@ Dla każdej story możesz uzupełnić status:
 - `Done` — zakończone i zaakceptowane.
 
 ## Sugerowana kolejność pracy
+
+Skrót głównego przepływu; pełna kolejność wszystkich PBI z zależnościami, etapami i kamieniami milowymi:
+[04-plan-realizacji-pbi.md](04-plan-realizacji-pbi.md).
 
 1. Zarejestrowanie nowego leada.
 2. Lista moich leadów.

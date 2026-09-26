@@ -16,6 +16,7 @@ Skróty źródeł zapisuje `diagrams.manifest.json`; `tools/validate-docs.ps1` w
 | [`07_process_06_integration_invoice_payment_reporting.png`](png/07_process_06_integration_invoice_payment_reporting.png) | [`process_06_integration_invoice_payment_reporting.md`](../ai_readable/processes/process_06_integration_invoice_payment_reporting.md) | eksport do ERP z ponowieniami, raporty, audyt |
 | [`08_sales_order_lifecycle.png`](png/08_sales_order_lifecycle.png) | [`order_status_lifecycle.md`](../ai_readable/order_status_lifecycle.md) | statusy `SalesOrder` |
 | [`09_backoffice_order_case_lifecycle.png`](png/09_backoffice_order_case_lifecycle.png) | [`order_status_lifecycle.md`](../ai_readable/order_status_lifecycle.md) | statusy `BackofficeOrderCase` (propozycja — Q-06) |
+| [`10_delivery_plan.png`](png/10_delivery_plan.png) | [`04-plan-realizacji-pbi.md`](../../04-plan-realizacji-pbi.md) | etapy realizacji PBI i kamienie milowe M1–M4 |
 
 ## Legenda
 

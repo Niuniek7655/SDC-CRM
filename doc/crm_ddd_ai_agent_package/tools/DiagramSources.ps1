@@ -33,7 +33,9 @@ function Get-RelativePath {
     if ($full.StartsWith($rootFull, [System.StringComparison]::OrdinalIgnoreCase)) {
         return $full.Substring($rootFull.Length).Replace('\', '/')
     }
-    return $full.Replace('\', '/')
+    # Plik poza katalogiem bazowym (np. doc/04-*.md względem pakietu) - ścieżka z "../".
+    $relative = (New-Object System.Uri($rootFull)).MakeRelativeUri((New-Object System.Uri($full))).ToString()
+    return [System.Uri]::UnescapeDataString($relative).Replace('\', '/')
 }
 
 function Write-Utf8File {
@@ -41,14 +43,16 @@ function Write-Utf8File {
     [System.IO.File]::WriteAllText($Path, $Content, $script:Utf8NoBom)
 }
 
-# Diagramy: blok ```mermaid poprzedzony znacznikiem <!-- diagram: NAZWA --> w plikach .md pod ai_readable/.
+# Diagramy: blok ```mermaid poprzedzony znacznikiem <!-- diagram: NAZWA --> w plikach .md pod ai_readable/
+# oraz w plikach .md bezpośrednio w katalogu doc/ (np. plan realizacji PBI).
 # Skrót obejmuje kod diagramu i konfigurację Mermaid, więc zmiana któregokolwiek oznacza nieaktualny PNG.
 function Get-DiagramSources {
     param([string]$PackageRoot, [string]$ConfigPath)
 
     $config = ConvertTo-NormalizedText ([System.IO.File]::ReadAllText($ConfigPath))
     $pattern = '<!--\s*diagram:\s*(?<name>[A-Za-z0-9_\-]+)\s*-->[ \t]*\n```mermaid[ \t]*\n(?<code>.*?)\n```'
-    $files = Get-ChildItem -Path (Join-Path $PackageRoot 'ai_readable') -Recurse -Filter '*.md' | Sort-Object FullName
+    $files = @(Get-ChildItem -Path (Join-Path $PackageRoot 'ai_readable') -Recurse -Filter '*.md') +
+        @(Get-ChildItem -Path (Split-Path -Parent $PackageRoot) -Filter '*.md' -File) | Sort-Object FullName
 
     foreach ($file in $files) {
         $text = ConvertTo-NormalizedText ([System.IO.File]::ReadAllText($file.FullName))

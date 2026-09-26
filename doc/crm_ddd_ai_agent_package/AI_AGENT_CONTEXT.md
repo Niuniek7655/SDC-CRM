@@ -81,6 +81,9 @@ statusy: [`ai_readable/order_status_lifecycle.md`](ai_readable/order_status_life
 
 ## Jak dodawać kod
 
+- Kolejność pracy: [`doc/04-plan-realizacji-pbi.md`](../04-plan-realizacji-pbi.md) — bierz następne PBI, którego zależności
+  są ukończone, a pytania `Q-xx` rozstrzygnięte.
+
 - Trzymaj się istniejącej struktury: projekty `SDC.CRM.*`, folder obszaru w każdej warstwie i folder przypadku użycia,
   np. `Backend/src/SDC.CRM.Application/Leads/RegisterLead/`. **Nie** twórz `Modules/` ani `BuildingBlocks/` bez ADR (T-01).
 - Używaj wyłącznie nazw kanonicznych z [`ai_readable/naming_decisions.md`](ai_readable/naming_decisions.md)

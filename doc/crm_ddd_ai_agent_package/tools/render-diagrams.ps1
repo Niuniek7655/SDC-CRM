@@ -4,7 +4,8 @@
 
 .DESCRIPTION
     Źródłem każdego diagramu jest blok ```mermaid poprzedzony znacznikiem <!-- diagram: NAZWA -->
-    w pliku .md pod ai_readable/. Wynik trafia do diagrams/png/NAZWA.png, a skróty źródeł do
+    w pliku .md pod ai_readable/ albo w pliku .md bezpośrednio w katalogu doc/ (plan realizacji PBI).
+    Wynik trafia do diagrams/png/NAZWA.png, a skróty źródeł do
     diagrams/diagrams.manifest.json (validate-docs.ps1 wykrywa na tej podstawie nieaktualne PNG).
 
     Wymaga Node.js z npx. Używa @mermaid-js/mermaid-cli w przypiętej wersji. Jeżeli w systemie jest Chrome

@@ -153,8 +153,8 @@ Keep clear boundaries between these areas:
 - Sales Activities
 - Order Capture
 - Order Backoffice
-- Reporting
-- Identity and Access
+- Reporting & KPI
+- Identity & Access
 - Integrations
 
 Use these layers where applicable:

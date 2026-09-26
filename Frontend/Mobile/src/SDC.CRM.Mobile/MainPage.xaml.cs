@@ -20,4 +20,11 @@ public partial class MainPage : ContentPage
             _viewModel.AppearingCommand.Execute(null);
         }
     }
+
+    protected override void OnDisappearing()
+    {
+        // Lets the view model unsubscribe from app-wide services (no leak of the transient page/view model).
+        _viewModel.DisappearingCommand.Execute(null);
+        base.OnDisappearing();
+    }
 }

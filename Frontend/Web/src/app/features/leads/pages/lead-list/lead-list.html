@@ -36,7 +36,7 @@
               <td>{{ lead.contactEmail }}</td>
               <td>
                 <span class="badge" [class]="'badge--' + lead.status.toLowerCase()">
-                  {{ lead.status }}
+                  {{ statusLabel(lead.status) }}
                 </span>
               </td>
               <td>{{ lead.createdAtUtc | date: 'short' }}</td>

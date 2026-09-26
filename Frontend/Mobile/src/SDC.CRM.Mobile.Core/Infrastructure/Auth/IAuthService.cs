@@ -9,8 +9,17 @@ public interface IAuthService
     /// <summary>Runs the interactive Authorization Code + PKCE login.</summary>
     Task<AuthResult> LoginAsync(CancellationToken cancellationToken = default);
 
-    /// <summary>Clears the local session (and best-effort server sign-out).</summary>
+    /// <summary>
+    /// User-initiated sign-out: forgets the local session and ends the identity provider session in the
+    /// system browser (best effort - local sign-out happens even if the browser step fails).
+    /// </summary>
     Task LogoutAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Forgets the local session only, without contacting the identity provider - e.g. when the API
+    /// rejected the token (HTTP 401) and the user simply has to sign in again.
+    /// </summary>
+    Task ClearSessionAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Returns a non-expired access token, refreshing it when needed.

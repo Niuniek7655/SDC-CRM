@@ -17,18 +17,23 @@ src/
     app.config.ts          # konfiguracja providerów (router, http, change detection)
     app.routes.ts          # routing najwyższego poziomu
     core/                  # rzeczy globalne, jednorazowe (singletony)
-      models/              #   - modele/typy domenowe
+      auth/                #   - OIDC/SSO: serwis, guard, interceptor, role, storage tokenów
+      models/              #   - modele/typy domenowe (kontrakty API)
       interceptors/        #   - interceptory HTTP (np. obsługa błędów)
-    shared/                # komponenty/pipe'y/dyrektywy współdzielone między funkcjami
+    shared/                # (jeszcze nie istnieje) komponenty/pipe'y/dyrektywy współdzielone między funkcjami
     layout/                # szkielet UI (Shell: nagłówek, nawigacja, outlet)
     features/              # funkcje biznesowe (każda lazy-loaded)
+      errors/              #   - strona "Brak dostępu" (/forbidden)
       leads/
         leads.routes.ts    #   - routing funkcji
+        lead-status-label.ts #  - polskie etykiety statusów leada
         data/              #   - dostęp do danych (serwisy API)
         pages/             #   - widoki (strony) funkcji
           lead-list/
           lead-register/
 ```
+
+Testy jednostkowe leżą obok testowanego kodu jako pliki `*.spec.ts` (patrz [Testy](#testy)).
 
 ### Kluczowe zasady
 
@@ -68,6 +73,9 @@ Logowanie realizuje SimpleIdServer (Authorization Code + PKCE) przez bibliotekę
 - `core/auth/auth.service.ts` — cykl logowania/wylogowania, sygnały tożsamości i ról,
 - `core/auth/auth.interceptor.ts` — dołącza token `Bearer` do żądań `/api`,
 - `core/auth/auth.guard.ts` — chroni trasy i wymusza role (`data: { roles: [...] }`),
+- `core/auth/oauth-storage.ts` — tokeny (access/refresh), weryfikator PKCE i nonce trzymane są w `sessionStorage`:
+  sesja przetrwa odświeżenie strony, ale nie jest współdzielona między kartami i znika po zamknięciu karty
+  (mniejsza ekspozycja niż `localStorage`); nowa karta loguje się ponownie przez SSO, zwykle bez podawania hasła,
 - konfiguracja klienta w `src/environments/environment*.ts` (`sso`).
 
 Klient SPA `sdc-crm-web` musi być zarejestrowany w SSO (patrz
@@ -75,7 +83,8 @@ Klient SPA `sdc-crm-web` musi być zarejestrowany w SSO (patrz
 
 ## Wymagania
 
-- Node.js 20.19+ / 22.12+ (zgodnie z wymaganiami Angular 22)
+- Node.js `^22.22.3`, `^24.15.0` lub `>=26.0.0` (wymóg Angular CLI 22, zapisany w `engines` w `package.json`);
+  zalecany Node 24 LTS - plik `.nvmrc` (np. `nvm install 24`, `nvm use 24.21.0`)
 - npm 10+
 
 ## Uruchamianie
@@ -87,14 +96,32 @@ npm start            # ng serve -> http://localhost:4200
 
 Dev server proxuje żądania `/api/*` do backendu pod `http://localhost:5080`
 (konfiguracja w `proxy.conf.json`), dzięki czemu nie ma problemów z CORS.
-Upewnij się, że backend (`backend/src/SDC.CRM.Api`) jest uruchomiony.
+Upewnij się, że backend (`Backend/src/SDC.CRM.Api`) jest uruchomiony, a schemat bazy zmigrowany
+(patrz `Backend/README.md`, sekcja „Migracje schematu”).
 
 ## Budowanie i testy
 
 ```bash
 npm run build        # produkcyjny build do dist/
-npm test             # testy jednostkowe (Karma + Jasmine)
+npm test             # testy jednostkowe (Karma + Jasmine) w trybie watch, z oknem przeglądarki
+npm run test:ci      # jednorazowe uruchomienie w headless Chrome (bez watch) - również w CI
 ```
+
+## Testy
+
+Testy jednostkowe uruchamia builder `@angular/build:karma` (Karma + Jasmine) w przeglądarce Chrome
+(`test:ci` używa trybu headless). Nie wymagają backendu ani SSO: komunikacja HTTP jest przechwytywana
+przez `HttpTestingController` (`provideHttpClientTesting`), a zależności zastępowane są obiektami
+`jasmine.createSpyObj`.
+
+| Plik | Co sprawdza | Jak |
+| --- | --- | --- |
+| `core/auth/auth.guard.spec.ts` | niezalogowany użytkownik jest przekierowany do logowania SSO z docelowym adresem; brak wymaganej roli → `/forbidden`; posiadanie jednej z ról lub trasa bez ról → wejście dozwolone | guard wywoływany w `TestBed.runInInjectionContext` z atrapą `AuthService` (spy) i prawdziwym `Router`; wynik (`true`/`false`/`UrlTree`) i wywołania `login`/`hasAnyRole` są asercjami |
+| `core/auth/auth.interceptor.spec.ts` | token `Bearer` trafia tylko do żądań `/api`; nie jest wysyłany do dostawcy tożsamości; bez tokena żądanie idzie bez nagłówka `Authorization` | `HttpClient` z interceptorem + `HttpTestingController`: test wysyła żądanie, przechwytuje je (`expectOne`) i sprawdza nagłówki; `verify()` pilnuje, że nie ma nieoczekiwanych żądań |
+| `core/auth/oauth-storage.spec.ts` | tokeny OIDC są w `sessionStorage`, nie w `localStorage` | bezpośrednie wywołanie fabryki storage |
+| `features/leads/data/lead.service.spec.ts` | `getMyLeads()` → `GET /api/leads/mine`; `registerLead()` → `POST /api/leads` z danymi formularza, bez `assignedSalespersonId` | `HttpTestingController`: metoda, URL, treść żądania i odpowiedź przekazana do subskrybenta |
+| `features/leads/lead-status-label.spec.ts` | kody statusów z API → polskie nazwy ze słownika; nieznany kod wyświetlany bez zmian | wywołania funkcji |
+| `features/leads/pages/lead-list/lead-list.spec.ts` | lista pokazuje leady z polską etykietą statusu i klasą CSS; stan pusty; komunikat błędu z przyciskiem „Spróbuj ponownie” | komponent renderowany przez `TestBed.createComponent` z atrapą `LeadService` zwracającą `of(...)`/`throwError(...)`; asercje na wyrenderowanym DOM |
 
 ## Możliwe kolejne kroki
 

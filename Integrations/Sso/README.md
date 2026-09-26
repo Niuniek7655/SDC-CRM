@@ -40,20 +40,34 @@ All images are public and available on [Docker Hub](https://hub.docker.com/u/sim
 ### 1. Start the environment
 
 **Requirements:**
-- Docker Desktop running
-- Docker Compose (built into Docker Desktop)
+- Docker running (Docker Desktop, or Docker Engine e.g. in WSL)
+- Docker Compose
 
 ```powershell
 cd D:\Users\szymo\repo\SDC-CRM\Integrations\Sso
 
-# Start all containers
-docker compose up -d
+# Start all containers, wait for IdServer and provision the SDC-CRM clients, roles and test users
+./manage-sso.ps1 start
 
 # Check status
-docker compose ps
+./manage-sso.ps1 status
 ```
 
-> **Note:** Make sure Docker Desktop is running before executing the above commands.
+`manage-sso.ps1 start` runs `docker compose up -d`, waits until IdServer responds and then runs
+`register-sdc-crm-clients.ps1` (see [Register the OAuth clients automatically](#register-the-oauth-clients-automatically)).
+Plain `docker compose up -d` only starts the containers - run `./manage-sso.ps1 provision` afterwards.
+
+### Configuration (optional `.env`)
+
+`docker-compose.yml` works out of the box with local development defaults (ports `5001`/`5002`/`5433`,
+database user `idserver`, image version `6.0.4`). To change them, copy `.env.example` to `.env`
+in this directory (the file is git-ignored) and edit the values. PostgreSQL applies the database
+credentials only when its volume is created, so run `docker compose down -v` after changing them.
+`manage-sso.ps1` reads `IDSERVER_PORT`, `WEBSITE_PORT` and `SIDS_MANAGER_CLIENT_SECRET` from the same `.env`
+(process environment variables take precedence, as in docker compose) and passes the authority and the secret
+to `register-sdc-crm-clients.ps1`. `SIDS_MANAGER_CLIENT_SECRET` does not change the secret stored in IdServer -
+change it for the `SIDS-manager` client in the admin panel first, then set the same value in `.env`.
+Never reuse these development values in a production identity provider.
 
 ### 2. Wait for initialization
 
@@ -63,7 +77,7 @@ On first start, IdServer will automatically:
 - ✅ Create administrator user
 - ✅ Create default OAuth clients
 
-**This process may take 30-60 seconds.**
+**This process may take 30-60 seconds.** `manage-sso.ps1 start` waits for it automatically (up to 3 minutes).
 
 Check logs:
 ```powershell
@@ -112,7 +126,7 @@ docker compose down -v
 
 ### Reset from scratch
 ```powershell
-docker compose down -v ; docker compose up -d
+docker compose down -v ; ./manage-sso.ps1 start
 ```
 
 ### View logs
@@ -138,20 +152,21 @@ bearer access token.
 
 ### Required objects in SimpleIdServer
 
-Register these once (via `register-sdc-crm-clients.ps1` or the admin panel):
+They are provisioned automatically by `./manage-sso.ps1 start` (via `register-sdc-crm-clients.ps1`, see below):
 
 | Object | Kind | Key values |
 |--------|------|-----------|
 | `sdc-crm-api` | API scope / resource | Audience `sdc-crm-api`, exposed |
 | `sdc-crm-web` | Public SPA client | Redirect `http://localhost:4200/`, PKCE, no secret |
-| `sdc-crm-mobile` | Public mobile client | Redirect `com.sdc.crm.mobile://callback`, PKCE, no secret |
+| `sdc-crm-mobile` | Public mobile client | Redirect `com.sdc.crm.mobile://callback`, post-logout redirect `com.sdc.crm.mobile://signout`, PKCE, no secret |
 | CRM roles | Roles/groups | `Salesperson`, `SalesManager`, `BackofficeUser`, `BackofficeManager`, `Admin` |
 
 All clients request scopes: `openid profile email role offline_access sdc-crm-api`.
 
 ### API configuration (already committed)
 
-`Backend/src/SDC.CRM.Api/appsettings*.json`:
+`Backend/src/SDC.CRM.Api/appsettings.Development.json` (other environments provide the same keys
+through environment variables, e.g. `Oidc__Authority`):
 
 ```json
 {
@@ -171,9 +186,13 @@ All clients request scopes: `openid profile email role offline_access sdc-crm-ap
 
 ### Register the OAuth clients automatically
 
+`./manage-sso.ps1 start` runs the registration on every start. To run it on its own (the environment
+must be up):
+
 ```powershell
 cd D:\Users\szymo\repo\SDC-CRM\Integrations\Sso
-./register-sdc-crm-clients.ps1
+./manage-sso.ps1 provision        # waits for IdServer, then runs register-sdc-crm-clients.ps1
+./register-sdc-crm-clients.ps1    # the script itself - accepts the switches listed below
 ```
 
 The script authenticates with the seeded `SIDS-manager` client and provisions
@@ -184,10 +203,19 @@ The script authenticates with the seeded `SIDS-manager` client and provisions
   `BackofficeManager`, `Admin`),
 - the two **public** clients `sdc-crm-web` (SPA) and `sdc-crm-mobile` (mobile),
   created with `is_public=true` (no secret, Authorization Code + PKCE),
+- the `role` claim in **access tokens** (the built-in `role` scope emits it only in id_token/userinfo by
+  default; the API authorizes on the JWT access token, so its mapper gets `include_in_accesstoken=true`),
 - one group per role (`SDC CRM <Role>`) with the matching role attached,
-- assignment of the `administrator` user to the requested role group(s).
+- assignment of the `administrator` user to the requested role group(s),
+- test users with the password `Test123!` (see below).
 
-The script is idempotent - it is safe to re-run. Useful switches:
+The script is idempotent - it is safe to re-run - and it reconciles existing environments with the definitions
+in the script: redirect URIs and post-logout redirect URIs missing in SimpleIdServer are added, clients created
+by older script versions are switched to public clients (`is_public=true`; otherwise the code exchange fails
+with `invalid_client`), the `role` access-token mapper is enabled and test users without a password receive
+one. URIs added manually, passwords changed manually and all other settings are kept. Changes introduced in the
+script (e.g. the mobile logout return address `com.sdc.crm.mobile://signout`) therefore reach existing
+environments on the next `./manage-sso.ps1 start` - no manual step in the admin panel. Useful switches:
 
 ```powershell
 # Give the administrator more than just the Admin role
@@ -202,23 +230,39 @@ The script is idempotent - it is safe to re-run. Useful switches:
 > The role scope names (`Salesperson`, `SalesManager`, `BackofficeUser`,
 > `BackofficeManager`, `Admin`) match the backend `CrmRoles` constants exactly.
 
+> SimpleIdServer 6.x management API details handled by the script: `POST clients` expects enum names
+> (`client_type: "SPA"` / `"MOBILE"`) and translatable fields as `client_name#en`; `PUT clients/{id}` addresses
+> the client by its technical id (GUID, not `client_id`), overwrites every field of the client details form
+> and expects numeric enums (`access_token_type`), so the script sends back the current values of all fields
+> it does not change. `POST users` ignores credentials - the password is added with
+> `POST users/{id}/credentials` (`{"active":true,"credential":{"type":"pwd","value":"..."}}`, note `type`,
+> not `credential_type`). `PUT scopes/{id}/mappers/{mapperId}` also overwrites every mapper field. Once the `role`
+> mapper is included in access tokens, a `client_credentials` token request that asks for the `role` scope fails
+> with HTTP 500 (there is no user to map), so the management token requests only the management scopes.
+
+> Logout: the `end_session` page of SimpleIdServer asks the user to confirm with **Revoke session**; after that it
+> redirects to the `post_logout_redirect_uri` (e.g. `com.sdc.crm.mobile://signout`). Refresh tokens are not
+> revoked by `end_session` - the clients delete them locally on logout.
+
 After running the script, **sign out / sign in again** so a fresh token carries
 the `role` claim.
 
 ### End-to-end run order
 
 ```powershell
-# 1. Identity provider (already running in your case)
+# 1. Identity provider + SDC-CRM clients, roles and test users (idempotent, safe to re-run)
 cd D:\Users\szymo\repo\SDC-CRM\Integrations\Sso
-./manage-sso.ps1 status
-./register-sdc-crm-clients.ps1          # one-time client/scope registration
+./manage-sso.ps1 start
 
-# 2. Backend API (resource server)  -> http://localhost:5080
-cd ..\..\Backend\src\SDC.CRM.Api
-dotnet run
+# 2. Database + backend API (resource server)  -> http://localhost:5080
+cd ..\..
+docker compose up -d postgres
+dotnet tool restore
+dotnet ef database update --project Backend/src/SDC.CRM.Infrastructure --startup-project Backend/src/SDC.CRM.Api
+dotnet run --project Backend/src/SDC.CRM.Api
 
 # 3. Angular web (public OIDC client) -> http://localhost:4200
-cd ..\..\..\Frontend\Web
+cd Frontend\Web
 npm install
 npm start
 
@@ -289,6 +333,9 @@ The admin panel allows:
 ## 🐘 PostgreSQL Database Access
 
 ### Connection String
+
+Default development values (see `.env.example`):
+
 ```
 Host=localhost;Port=5433;Database=IdServer;Username=idserver;Password=SsoSecurePassword123!
 ```
@@ -407,9 +454,7 @@ docker compose up -d
 
 ## ✅ First Run Checklist
 
-- [ ] Run `docker compose up -d`
-- [ ] Wait 30-60 seconds for initialization
-- [ ] Check http://localhost:5001/.well-known/openid-configuration
-- [ ] Log in to admin panel http://localhost:5002
-- [ ] Create a new OAuth client for SDC-CRM application
-- [ ] Configure SDC-CRM application with OAuth client data
+- [ ] (Optional) Copy `.env.example` to `.env` to change ports or credentials
+- [ ] Run `./manage-sso.ps1 start` (starts the containers, waits for IdServer and provisions the API scope,
+      `sdc-crm-web` and `sdc-crm-mobile` clients, roles, groups and test users)
+- [ ] Log in to the admin panel http://localhost:5002/master/clients to verify the clients

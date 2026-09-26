@@ -1,0 +1,47 @@
+name: web
+
+# Install the locked dependencies, build the Angular app for production and run the unit tests
+# in headless Chrome on the Node version from Frontend/Web/.nvmrc.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Frontend/Web/**'
+      - '.github/workflows/web.yml'
+  pull_request:
+    paths:
+      - 'Frontend/Web/**'
+      - '.github/workflows/web.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: web-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: Build and test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Frontend/Web
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: Frontend/Web/.nvmrc
+          cache: npm
+          cache-dependency-path: Frontend/Web/package-lock.json
+
+      - name: Install dependencies (exact versions from package-lock.json)
+        run: npm ci
+
+      - name: Production build
+        run: npm run build
+
+      - name: Unit tests (headless Chrome)
+        run: npm run test:ci
+

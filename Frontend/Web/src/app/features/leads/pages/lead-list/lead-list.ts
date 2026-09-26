@@ -4,6 +4,7 @@ import { RouterLink } from '@angular/router';
 
 import { LeadSummary } from '../../../../core/models/lead.model';
 import { LeadService } from '../../data/lead.service';
+import { leadStatusLabel } from '../../lead-status-label';
 
 @Component({
   selector: 'app-lead-list',
@@ -18,6 +19,7 @@ export class LeadList {
   protected readonly leads = signal<LeadSummary[]>([]);
   protected readonly loading = signal(false);
   protected readonly error = signal<string | null>(null);
+  protected readonly statusLabel = leadStatusLabel;
 
   constructor() {
     this.load();

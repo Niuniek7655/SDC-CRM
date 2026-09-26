@@ -1,20 +1,24 @@
 name: dotnet-local-infra
 
+# Local development infrastructure only - never use these defaults in production.
+# Credentials fall back to development defaults; override them by copying
+# .env.example to .env (git-ignored) next to this file.
+
 services:
   postgres:
     image: postgres:17-alpine
     container_name: dotnet-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: app
-      POSTGRES_PASSWORD: app
-      POSTGRES_DB: appdb
+      POSTGRES_USER: ${POSTGRES_USER:-app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-app}
+      POSTGRES_DB: ${POSTGRES_DB:-appdb}
     ports:
       - "5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U app -d appdb"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -26,8 +30,8 @@ services:
     container_name: dotnet-rabbitmq
     restart: unless-stopped
     environment:
-      RABBITMQ_DEFAULT_USER: app
-      RABBITMQ_DEFAULT_PASS: app
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-app}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-app}
     ports:
       - "5672:5672"     # AMQP
       - "15672:15672"   # Management UI
@@ -58,12 +62,17 @@ services:
     networks:
       - dotnet-local-network
 
+  # Observability images are pinned on purpose: ':latest' silently moved to new majors
+  # (e.g. Tempo 3.x) whose configuration format differs from infra/observability/*.yaml.
+  # Upgrade deliberately: bump the tag, read the release notes, adjust the config.
   seq:
-    image: datalust/seq:latest
+    image: datalust/seq:2026.1.17182
     container_name: dotnet-seq
     restart: unless-stopped
     environment:
       ACCEPT_EULA: "Y"
+      # Local development only: no login required for the Seq UI/ingestion.
+      SEQ_FIRSTRUN_NOAUTHENTICATION: "true"
     ports:
       - "5341:80"
     volumes:
@@ -72,7 +81,7 @@ services:
       - dotnet-local-network
 
   loki:
-    image: grafana/loki:latest
+    image: grafana/loki:3.7.8
     container_name: dotnet-loki
     restart: unless-stopped
     command: ["-config.file=/etc/loki/loki-config.yaml"]
@@ -85,7 +94,7 @@ services:
       - dotnet-local-network
 
   prometheus:
-    image: prom/prometheus:latest
+    image: prom/prometheus:v3.15.0
     container_name: dotnet-prometheus
     restart: unless-stopped
     command:
@@ -101,12 +110,12 @@ services:
       - dotnet-local-network
 
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:13.2.2
     container_name: dotnet-grafana
     restart: unless-stopped
     environment:
-      GF_SECURITY_ADMIN_USER: admin
-      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
     ports:
       - "3000:3000"
     volumes:
@@ -120,22 +129,41 @@ services:
     networks:
       - dotnet-local-network
 
+  # Jaeger v2 (successor of the discontinued jaegertracing/all-in-one v1 image):
+  # OTLP receivers on 4317/4318 and the UI/query API on 16686, in-memory storage.
   jaeger:
-    image: jaegertracing/all-in-one:latest
+    image: jaegertracing/jaeger:2.21.0
     container_name: dotnet-jaeger
     restart: unless-stopped
     environment:
-      COLLECTOR_OTLP_ENABLED: "true"
+      # Listen on all interfaces so the collector container can reach the OTLP receivers.
+      JAEGER_LISTEN_HOST: "0.0.0.0"
     ports:
       - "16686:16686"   # Jaeger UI
     networks:
       - dotnet-local-network
 
+  # Tempo runs as a non-root user (10001), but a fresh named volume is owned by root.
+  # This one-shot container fixes the volume ownership before Tempo starts.
+  # (The Tempo image is distroless and has no chown, hence busybox.)
+  tempo-init:
+    image: busybox:1.37
+    container_name: dotnet-tempo-init
+    user: root
+    entrypoint: ["chown", "-R", "10001:10001", "/tmp/tempo"]
+    volumes:
+      - tempo-data:/tmp/tempo
+    networks:
+      - dotnet-local-network
+
   tempo:
-    image: grafana/tempo:latest
+    image: grafana/tempo:2.10.8
     container_name: dotnet-tempo
     restart: unless-stopped
     command: ["-config.file=/etc/tempo/tempo.yaml"]
+    depends_on:
+      tempo-init:
+        condition: service_completed_successfully
     ports:
       - "3200:3200"     # Tempo HTTP API
     volumes:
@@ -145,7 +173,7 @@ services:
       - dotnet-local-network
 
   otel-collector:
-    image: otel/opentelemetry-collector-contrib:latest
+    image: otel/opentelemetry-collector-contrib:0.161.0
     container_name: dotnet-otel-collector
     restart: unless-stopped
     command: ["--config=/etc/otelcol-contrib/otel-collector-config.yaml"]
@@ -159,6 +187,7 @@ services:
       - jaeger
       - tempo
       - loki
+      - seq
     networks:
       - dotnet-local-network
 

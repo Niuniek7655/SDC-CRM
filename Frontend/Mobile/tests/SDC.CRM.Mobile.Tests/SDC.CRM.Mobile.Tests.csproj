@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Unit tests of the platform-independent mobile code (SDC.CRM.Mobile.Core): ViewModels, API client,
+    HTTP auth handler and OIDC session logic. Runs on plain net10.0 - no MAUI workload, emulator,
+    identity provider or network is needed (HTTP and ports are replaced with stubs/substitutes).
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NSubstitute" Version="5.3.0" />
+    <PackageReference Include="TUnit" Version="1.69.16" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\SDC.CRM.Mobile.Core\SDC.CRM.Mobile.Core.csproj" />
+  </ItemGroup>
+
+</Project>
+

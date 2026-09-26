@@ -1,0 +1,16 @@
+{
+  "solution": {
+    "path": "..\\SDC-CRM.slnx",
+    "projects": [
+      "Backend\\src\\SDC.CRM.Domain\\SDC.CRM.Domain.csproj",
+      "Backend\\src\\SDC.CRM.Application\\SDC.CRM.Application.csproj",
+      "Backend\\src\\SDC.CRM.Infrastructure\\SDC.CRM.Infrastructure.csproj",
+      "Backend\\src\\SDC.CRM.Api\\SDC.CRM.Api.csproj",
+      "Backend\\tests\\SDC.CRM.Domain.Tests\\SDC.CRM.Domain.Tests.csproj",
+      "Backend\\tests\\SDC.CRM.Application.Tests\\SDC.CRM.Application.Tests.csproj",
+      "Backend\\tests\\SDC.CRM.Api.Tests\\SDC.CRM.Api.Tests.csproj",
+      "Backend\\tests\\SDC.CRM.Api.IntegrationTests\\SDC.CRM.Api.IntegrationTests.csproj"
+    ]
+  }
+}
+

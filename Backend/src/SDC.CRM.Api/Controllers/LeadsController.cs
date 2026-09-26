@@ -21,7 +21,11 @@ public sealed class LeadsController(
     /// <summary>Register a new lead with minimal customer and contact data.</summary>
     [HttpPost]
     [Authorize(Policy = CrmPolicies.RegisterLead)]
-    public async Task<IActionResult> RegisterLead(RegisterLeadRequest request, CancellationToken cancellationToken)
+    [ProducesResponseType<RegisterLeadResponse>(StatusCodes.Status201Created)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<RegisterLeadResponse>> RegisterLead(
+        RegisterLeadRequest request,
+        CancellationToken cancellationToken)
     {
         // The owning salesperson is taken from the authenticated identity, never
         // from the client payload, so the UI cannot register leads for others.
@@ -38,7 +42,7 @@ public sealed class LeadsController(
         logger.LogInformation("Lead {LeadId} registered by {UserId}", leadId, currentUser.Id);
 
         // Location points at the caller's lead list; the body carries the new id.
-        return CreatedAtAction(nameof(GetMyLeads), routeValues: null, value: new { id = leadId });
+        return CreatedAtAction(nameof(GetMyLeads), routeValues: null, value: new RegisterLeadResponse(leadId));
     }
 
     /// <summary>Show the leads owned by the authenticated salesperson.</summary>

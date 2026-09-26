@@ -26,7 +26,7 @@ public partial class LoginViewModel(IAuthService authService, INavigationService
             IsBusy = true;
             if (await authService.IsAuthenticatedAsync())
             {
-                await navigation.GoToAsync("//main");
+                await navigation.GoToAsync(AppRoutes.ToMain);
             }
         }
         finally
@@ -57,7 +57,7 @@ public partial class LoginViewModel(IAuthService authService, INavigationService
                 return;
             }
 
-            await navigation.GoToAsync("//main");
+            await navigation.GoToAsync(AppRoutes.ToMain);
         }
         catch (Exception ex)
         {

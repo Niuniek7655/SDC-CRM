@@ -1,123 +1,120 @@
 using System.Text.Json;
-using Duende.IdentityModel.OidcClient;
 using Microsoft.Extensions.Logging;
-using SDC.CRM.Mobile.Infrastructure.Configuration;
-using IBrowser = Duende.IdentityModel.OidcClient.Browser.IBrowser;
 
 namespace SDC.CRM.Mobile.Infrastructure.Auth;
 
 /// <summary>
-/// OIDC relying on party for the mobile client using Duende OidcClient with the
-/// system browser. Tokens are persisted through <see cref="ITokenStorage"/>.
+/// Session rules of the mobile client on top of <see cref="IOidcSessionClient"/>: tokens are kept in
+/// <see cref="ITokenStorage"/> (secure storage), refreshed shortly before they expire and forgotten when
+/// the refresh fails; sign-out also ends the identity provider session.
 /// </summary>
-public sealed class OidcAuthService : IAuthService
+public sealed class OidcAuthService(
+    ITokenStorage tokenStorage,
+    IOidcSessionClient sessionClient,
+    TimeProvider timeProvider,
+    ILogger<OidcAuthService> logger) : IAuthService
 {
     private static readonly TimeSpan ExpiryLeeway = TimeSpan.FromSeconds(60);
-
-    private readonly ITokenStorage _tokenStorage;
-    private readonly ILogger<OidcAuthService> _logger;
-    private readonly OidcClient _client;
-
-    public OidcAuthService(
-        ITokenStorage tokenStorage,
-        IBrowser browser,
-        ILogger<OidcAuthService> logger)
-    {
-        _tokenStorage = tokenStorage;
-        _logger = logger;
-
-        var options = new OidcClientOptions
-        {
-            Authority = AppConfig.Authority,
-            ClientId = AppConfig.ClientId,
-            Scope = AppConfig.Scope,
-            RedirectUri = AppConfig.RedirectUri,
-            PostLogoutRedirectUri = AppConfig.PostLogoutRedirectUri,
-            Browser = browser,
-            // SimpleIdServer may reject PAR from a public client; keep it simple.
-            DisablePushedAuthorization = true,
-        };
-
-        // Allow HTTP against the local identity provider.
-        options.Policy.Discovery.RequireHttps = AppConfig.RequireHttps;
-
-        _client = new OidcClient(options);
-    }
 
     public async Task<AuthResult> LoginAsync(CancellationToken cancellationToken = default)
     {
         try
         {
-            var result = await _client.LoginAsync(new LoginRequest(), cancellationToken);
+            var result = await sessionClient.LoginAsync(cancellationToken);
 
             if (result.IsError)
             {
-                _logger.LogWarning("OIDC login failed: {Error}", result.Error);
+                logger.LogWarning("OIDC login failed: {Error}", result.Error);
                 return AuthResult.Failure(result.Error);
             }
 
-            await _tokenStorage.SaveAsync(new TokenSet(
-                result.AccessToken,
-                result.RefreshToken ?? string.Empty,
-                result.AccessTokenExpiration));
+            await tokenStorage.SaveAsync(ToTokenSet(result.Tokens!, previous: null));
 
             return AuthResult.Success();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "OIDC login threw");
+            logger.LogError(ex, "OIDC login threw");
             return AuthResult.Failure(ex.Message);
         }
     }
 
     public async Task LogoutAsync(CancellationToken cancellationToken = default)
     {
-        await _tokenStorage.ClearAsync();
+        var tokens = await tokenStorage.GetAsync();
+
+        // Local sign-out first: the device forgets the session even if the browser step fails or is cancelled.
+        await tokenStorage.ClearAsync();
+
+        if (string.IsNullOrEmpty(tokens?.IdentityToken))
+        {
+            return;
+        }
+
+        try
+        {
+            var result = await sessionClient.EndSessionAsync(tokens.IdentityToken, cancellationToken);
+            if (result.IsError)
+            {
+                logger.LogWarning("OIDC end-session failed: {Error}", result.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "OIDC end-session threw");
+        }
     }
+
+    public Task ClearSessionAsync(CancellationToken cancellationToken = default) => tokenStorage.ClearAsync();
 
     public async Task<string?> GetAccessTokenAsync(CancellationToken cancellationToken = default)
     {
-        var tokens = await _tokenStorage.GetAsync();
+        var tokens = await tokenStorage.GetAsync();
         if (tokens is null)
         {
             return null;
         }
 
-        if (tokens.ExpiresAt - ExpiryLeeway > DateTimeOffset.UtcNow)
+        if (tokens.ExpiresAt - ExpiryLeeway > timeProvider.GetUtcNow())
         {
             return tokens.AccessToken;
         }
 
         if (string.IsNullOrEmpty(tokens.RefreshToken))
         {
-            await _tokenStorage.ClearAsync();
+            await tokenStorage.ClearAsync();
             return null;
         }
 
         try
         {
-            var refreshed = await _client.RefreshTokenAsync(tokens.RefreshToken, cancellationToken: cancellationToken);
+            var refreshed = await sessionClient.RefreshAsync(tokens.RefreshToken, cancellationToken);
             if (refreshed.IsError)
             {
-                _logger.LogWarning("Token refresh failed: {Error}", refreshed.Error);
-                await _tokenStorage.ClearAsync();
+                logger.LogWarning("Token refresh failed: {Error}", refreshed.Error);
+                await tokenStorage.ClearAsync();
                 return null;
             }
 
-            await _tokenStorage.SaveAsync(new TokenSet(
-                refreshed.AccessToken,
-                string.IsNullOrEmpty(refreshed.RefreshToken) ? tokens.RefreshToken : refreshed.RefreshToken,
-                refreshed.AccessTokenExpiration));
+            var updated = ToTokenSet(refreshed.Tokens!, previous: tokens);
+            await tokenStorage.SaveAsync(updated);
 
-            return refreshed.AccessToken;
+            return updated.AccessToken;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Token refresh threw");
-            await _tokenStorage.ClearAsync();
+            logger.LogError(ex, "Token refresh threw");
+            await tokenStorage.ClearAsync();
             return null;
         }
     }
+
+    /// <summary>Keeps the previous refresh/identity token when the identity provider does not rotate it.</summary>
+    private static TokenSet ToTokenSet(OidcTokens tokens, TokenSet? previous) => new(
+        tokens.AccessToken,
+        string.IsNullOrEmpty(tokens.RefreshToken) ? previous?.RefreshToken ?? string.Empty : tokens.RefreshToken,
+        tokens.AccessTokenExpiresAt,
+        string.IsNullOrEmpty(tokens.IdentityToken) ? previous?.IdentityToken : tokens.IdentityToken);
 
     public async Task<bool> IsAuthenticatedAsync(CancellationToken cancellationToken = default)
     {

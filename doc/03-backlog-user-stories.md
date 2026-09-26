@@ -31,7 +31,7 @@ Alternatywnie można zaznaczyć checkbox przy statusie:
 
 ## CRM-001 — Rejestracja nowego leada
 
-**Status:** Backlog  
+**Status:** In Progress  
 **Priorytet:** Must Have  
 **Rola:** Handlowiec  
 **Kontekst DDD:** Sales Pipeline  
@@ -45,9 +45,9 @@ aby rozpocząć proces sprzedaży.
 
 ### Status realizacji
 
-- [x] Backlog
+- [ ] Backlog
 - [ ] Ready
-- [ ] In Progress
+- [x] In Progress
 - [ ] Blocked
 - [ ] Review
 - [ ] Done
@@ -82,7 +82,7 @@ aby rozpocząć proces sprzedaży.
 
 ## CRM-002 — Lista moich leadów
 
-**Status:** Backlog  
+**Status:** In Progress  
 **Priorytet:** Must Have  
 **Rola:** Handlowiec  
 **Kontekst DDD:** Sales Pipeline  
@@ -96,9 +96,9 @@ aby wiedzieć, którymi tematami sprzedażowymi mam się zająć.
 
 ### Status realizacji
 
-- [x] Backlog
+- [ ] Backlog
 - [ ] Ready
-- [ ] In Progress
+- [x] In Progress
 - [ ] Blocked
 - [ ] Review
 - [ ] Done
@@ -1087,7 +1087,7 @@ aby zakończyć proces obsługi.
 
 ## CRM-028 — Logowanie użytkownika
 
-**Status:** Backlog  
+**Status:** Review  
 **Priorytet:** Must Have  
 **Rola:** Każdy użytkownik  
 **Kontekst DDD:** Identity & Access  
@@ -1101,11 +1101,11 @@ aby korzystać z funkcji zgodnych z moją rolą.
 
 ### Status realizacji
 
-- [x] Backlog
+- [ ] Backlog
 - [ ] Ready
 - [ ] In Progress
 - [ ] Blocked
-- [ ] Review
+- [x] Review
 - [ ] Done
 
 ### Kryteria akceptacji
@@ -1119,7 +1119,7 @@ aby korzystać z funkcji zgodnych z moją rolą.
 
 ## CRM-029 — Uprawnienia według ról
 
-**Status:** Backlog  
+**Status:** In Progress  
 **Priorytet:** Must Have  
 **Rola:** Administrator  
 **Kontekst DDD:** Identity & Access  
@@ -1133,9 +1133,9 @@ aby użytkownicy mieli dostęp tylko do właściwych funkcji.
 
 ### Status realizacji
 
-- [x] Backlog
+- [ ] Backlog
 - [ ] Ready
-- [ ] In Progress
+- [x] In Progress
 - [ ] Blocked
 - [ ] Review
 - [ ] Done
@@ -1458,8 +1458,8 @@ aby uruchomić dalszy proces realizacyjny lub księgowy.
 
 | ID | Epic | Story | Priorytet | Status |
 |---|---|---|---|---|
-| CRM-001 | Lead Management | Rejestracja nowego leada | Must Have | Backlog |
-| CRM-002 | Lead Management | Lista moich leadów | Must Have | Backlog |
+| CRM-001 | Lead Management | Rejestracja nowego leada | Must Have | In Progress |
+| CRM-002 | Lead Management | Lista moich leadów | Must Have | In Progress |
 | CRM-003 | Lead Management | Szczegóły leada | Must Have | Backlog |
 | CRM-004 | Lead Management | Przypisanie leada do handlowca | Should Have | Backlog |
 | CRM-005 | Lead Management | Kwalifikacja leada | Must Have | Backlog |
@@ -1485,8 +1485,8 @@ aby uruchomić dalszy proces realizacyjny lub księgowy.
 | CRM-025 | Order Backoffice | Dodanie komentarza backoffice | Should Have | Backlog |
 | CRM-026 | Order Backoffice | Zwrot zamówienia do handlowca | Must Have | Backlog |
 | CRM-027 | Order Backoffice | Zamknięcie zamówienia jako zrealizowanego | Must Have | Backlog |
-| CRM-028 | Identity & Access | Logowanie użytkownika | Must Have | Backlog |
-| CRM-029 | Identity & Access | Uprawnienia według ról | Must Have | Backlog |
+| CRM-028 | Identity & Access | Logowanie użytkownika | Must Have | Review |
+| CRM-029 | Identity & Access | Uprawnienia według ról | Must Have | In Progress |
 | CRM-030 | Identity & Access | Dziennik audytu | Should Have | Backlog |
 | CRM-031 | Reporting & KPI | Dashboard handlowca | Should Have | Backlog |
 | CRM-032 | Reporting & KPI | Dashboard menedżera sprzedaży | Should Have | Backlog |

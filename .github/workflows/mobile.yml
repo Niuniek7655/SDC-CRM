@@ -1,0 +1,74 @@
+name: mobile
+
+# Unit tests of the platform-independent mobile code (SDC.CRM.Mobile.Core) on Linux, then a compile check
+# of the .NET MAUI app for Android and Windows on a Windows runner. Produces no signed packages.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Frontend/Mobile/**'
+      - 'global.json'
+      - '.github/workflows/mobile.yml'
+  pull_request:
+    paths:
+      - 'Frontend/Mobile/**'
+      - 'global.json'
+      - '.github/workflows/mobile.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mobile-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Unit tests (Core)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Test
+        run: dotnet test --project Frontend/Mobile/tests/SDC.CRM.Mobile.Tests/SDC.CRM.Mobile.Tests.csproj --configuration Release
+
+  build:
+    name: Build ${{ matrix.platform }}
+    runs-on: windows-latest
+    needs: test
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: Android
+            framework: net10.0-android
+          - platform: Windows
+            framework: net10.0-windows10.0.19041.0
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+
+      - uses: actions/setup-java@v6
+        if: matrix.platform == 'Android'
+        with:
+          distribution: microsoft
+          java-version: '17'
+
+      - name: Install MAUI workloads
+        run: dotnet workload restore Frontend/Mobile/src/SDC.CRM.Mobile/SDC.CRM.Mobile.csproj
+
+      - name: Install Android SDK dependencies
+        if: matrix.platform == 'Android'
+        run: dotnet build Frontend/Mobile/src/SDC.CRM.Mobile/SDC.CRM.Mobile.csproj -t:InstallAndroidDependencies -f net10.0-android "-p:AndroidSdkDirectory=$env:ANDROID_HOME" -p:AcceptAndroidSDKLicenses=True
+
+      # Debug configuration: a fast compile check; signed release packages are a separate concern.
+      - name: Build
+        run: dotnet build Frontend/Mobile/src/SDC.CRM.Mobile/SDC.CRM.Mobile.csproj -f ${{ matrix.framework }} --configuration Debug
+

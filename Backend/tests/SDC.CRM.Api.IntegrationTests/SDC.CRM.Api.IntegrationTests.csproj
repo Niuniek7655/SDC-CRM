@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    API integration tests: the real ASP.NET Core pipeline (routing, authentication, authorization policies,
+    middleware, JSON serialization) runs in-memory on TestServer. The database is not used - persistence
+    ports are replaced with NSubstitute substitutes - and tokens are replaced with a test authentication scheme.
+  -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.12" />
+    <PackageReference Include="NSubstitute" Version="5.3.0" />
+    <PackageReference Include="TUnit" Version="1.69.16" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\SDC.CRM.Api\SDC.CRM.Api.csproj" />
+  </ItemGroup>
+
+</Project>
+

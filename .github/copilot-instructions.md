@@ -8,9 +8,10 @@ The repository is organized as a multi-application product:
 
 - `Backend/**` — .NET backend for CRM domain, API, application logic, persistence and integrations.
 - `Frontend/Web/**` — dedicated web frontend application.
-- `Frontend/Mobile/**` — dedicated mobile frontend application, planned as a .NET MAUI app.
+- `Frontend/Mobile/**` — dedicated .NET MAUI mobile application.
 - `doc/**` — product, domain and architecture documentation.
-- `integrations/**` — integration-related code and documentation when introduced.
+- `Integrations/**` — integration-related code and documentation (currently the local SSO/IAM environment).
+- `infra/**` — local development infrastructure configuration used by the root `docker-compose.yml`.
 
 The mobile app is not a wrapper around the web app. Treat `Frontend/Web` and `Frontend/Mobile` as separate clients that consume backend APIs and share CRM domain language, not UI implementation.
 
@@ -58,24 +59,32 @@ When changing files under `Frontend/Mobile/**`, prioritize the mobile-specific .
 
 ## Repository layout
 
-Follow the existing repository structure. The expected layout is:
+Follow the existing repository structure:
 
 ```text
 /Backend
-  /src
-  /tests
+  /src                       # SDC.CRM.Domain, SDC.CRM.Application, SDC.CRM.Infrastructure, SDC.CRM.Api
+  /tests                     # Domain, Application and Api unit tests, Api.IntegrationTests (TestServer)
+  SDC.CRM.Backend.slnf       # all backend projects without the MAUI app
+  Dockerfile
 
 /Frontend
-  /Web
+  /Web                       # Angular SPA
   /Mobile
+    /src
+      /SDC.CRM.Mobile        # .NET MAUI app: views, Shell, platform adapters, DI (MauiProgram)
+      /SDC.CRM.Mobile.Core   # net10.0: view models, API client, session logic (unit-testable)
+    /tests
+      /SDC.CRM.Mobile.Tests
 
-/doc
-
-/integrations
+/doc                         # product and domain documentation
+/Integrations                # local SSO (SimpleIdServer) environment and provisioning scripts
+/infra                       # local observability/infrastructure configuration
 
 /.github
   /instructions
   /prompts
+  /workflows                 # CI: backend, web, mobile
 
 /.cursor
   /rules
@@ -84,75 +93,52 @@ Follow the existing repository structure. The expected layout is:
   /rules
 ```
 
-Recommended future layout for the mobile app:
-
-```text
-Frontend/Mobile
-  /src
-    /SDC.CRM.Mobile
-      /Presentation
-        /Views
-        /ViewModels
-        /Navigation
-      /Application
-        /UseCases
-        /Interfaces
-        /DTOs
-      /Domain
-        /Models
-        /ValueObjects
-      /Infrastructure
-        /Api
-        /Auth
-        /Storage
-        /Connectivity
-      /Platforms
-        /Android
-        /iOS
-        /MacCatalyst
-        /Windows
-  /tests
-    /SDC.CRM.Mobile.Tests
-```
+Root files: `SDC-CRM.slnx` (solution), `global.json` (Microsoft.Testing.Platform for `dotnet test`),
+`dotnet-tools.json` (local tools, e.g. `dotnet-ef`), `docker-compose.yml` and `.env.example` (local infrastructure).
 
 Keep product and domain documentation under `/doc`. Do not put full backlog or long domain specifications in this file.
 
 ## Build, run and test
 
-When adding or changing backend code, run the relevant backend build and tests.
-
-Expected commands for a .NET backend:
+When adding or changing backend code, run the backend build and tests from the repository root.
+`global.json` enables the Microsoft.Testing.Platform mode of `dotnet test`, which TUnit requires on the .NET 10 SDK.
 
 ```bash
-dotnet restore
-dotnet build
-dotnet test
+dotnet build Backend/SDC.CRM.Backend.slnf
+dotnet test --solution Backend/SDC.CRM.Backend.slnf
 ```
 
-When adding or changing the web frontend, run the relevant frontend install, build and tests from `Frontend/Web`.
-
-Expected commands for a TypeScript frontend:
+When the persistence model changes, add an EF Core migration and apply migrations explicitly
+(the API never creates or migrates the schema at startup):
 
 ```bash
-npm install
+dotnet tool restore
+dotnet ef migrations add <Name> --project Backend/src/SDC.CRM.Infrastructure --startup-project Backend/src/SDC.CRM.Api --output-dir Persistence/Migrations
+dotnet ef database update --project Backend/src/SDC.CRM.Infrastructure --startup-project Backend/src/SDC.CRM.Api
+```
+
+When adding or changing the web frontend, run install, build and tests from `Frontend/Web`
+(Node version from `.nvmrc`):
+
+```bash
+npm ci
 npm run build
-npm test
+npm run test:ci
 ```
 
-When adding or changing the mobile frontend, run the relevant .NET MAUI restore, build and tests from `Frontend/Mobile`.
-
-Expected commands for a .NET MAUI frontend:
+When adding or changing the mobile frontend, run from the repository root:
 
 ```bash
-dotnet workload restore
-dotnet restore
-dotnet build
-dotnet test
+dotnet workload restore Frontend/Mobile/src/SDC.CRM.Mobile/SDC.CRM.Mobile.csproj
+dotnet build Frontend/Mobile/src/SDC.CRM.Mobile/SDC.CRM.Mobile.csproj -f net10.0-android
+dotnet build Frontend/Mobile/src/SDC.CRM.Mobile/SDC.CRM.Mobile.csproj -f net10.0-windows10.0.19041.0
+dotnet test --project Frontend/Mobile/tests/SDC.CRM.Mobile.Tests/SDC.CRM.Mobile.Tests.csproj
 ```
 
-If the actual repository uses different commands, follow the commands defined in repository scripts, README files, CI configuration, project files or package files.
+The CI workflows in `.github/workflows` run the same commands. If the repository scripts, README files or
+CI configuration define different commands, follow them.
 
-If the local machine does not have the required .NET MAUI workload or mobile SDK installed, do not fake validation. State that the build could not be fully validated and include the exact command attempted and the exact missing workload/SDK error.
+If the local machine does not have the required .NET MAUI workload, mobile SDK, Node version or Docker, do not fake validation. State that the build could not be fully validated and include the exact command attempted and the exact error.
 
 ## Architecture rules
 
@@ -278,6 +264,7 @@ Rules:
 - A backoffice user works on submitted orders, not on the full sales pipeline.
 - An admin manages users, roles and configuration.
 - Never hardcode secrets.
+- Keep environment-specific settings out of `appsettings.json`: local development values belong in `appsettings.Development.json` (or an optional, git-ignored `.env` for Docker Compose), other environments use environment variables. Missing required settings must fail fast at startup.
 - Do not log sensitive customer data.
 - Validate all external input on the backend.
 - Mobile and web clients must treat tokens, refresh tokens and customer data as sensitive.
@@ -305,15 +292,16 @@ Audit records should include the user, timestamp, action and business object ide
 
 Add tests for business behavior, not only technical implementation.
 
-Prefer behavior-oriented test names, for example:
+Prefer behavior-oriented test names following the convention from `99-tdd-tunit-nsubstitute`
+(`TestedMethod__When_scenario__Should_expected_result`), for example:
 
 ```text
-RejectLead_ShouldRequireRejectionReason
-QualifyLead_ShouldFail_WhenLeadIsRejected
-LoseOpportunity_ShouldRequireLostReason
-SubmitOrderToBackoffice_ShouldFail_WhenOrderIsIncomplete
-ReturnOrderToSales_ShouldRequireComment
-CompleteOrder_ShouldSetCompletionDate
+RejectLead__When_rejection_reason_is_missing__Should_fail_validation
+QualifyLead__When_lead_is_rejected__Should_fail
+LoseOpportunity__When_lost_reason_is_missing__Should_fail_validation
+SubmitOrderToBackoffice__When_order_is_incomplete__Should_return_validation_error
+ReturnOrderToSales__When_comment_is_missing__Should_fail_validation
+CompleteOrder__When_order_can_be_completed__Should_set_completion_date
 ```
 
 For each business feature, cover:

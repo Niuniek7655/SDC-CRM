@@ -11,7 +11,8 @@ public interface ITokenStorage
 }
 
 /// <summary>
-/// Zestaw tokenów uwierzytelniających.
+/// Zestaw tokenów uwierzytelniających. <paramref name="IdentityToken"/> jest potrzebny do wylogowania
+/// z dostawcy tożsamości (id_token_hint w żądaniu end_session).
 /// </summary>
-public sealed record TokenSet(string AccessToken, string RefreshToken, DateTimeOffset ExpiresAt);
+public sealed record TokenSet(string AccessToken, string RefreshToken, DateTimeOffset ExpiresAt, string? IdentityToken = null);
 

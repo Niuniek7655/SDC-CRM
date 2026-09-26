@@ -5,8 +5,9 @@ using Android.Content.PM;
 namespace SDC.CRM.Mobile;
 
 /// <summary>
-/// Receives the OIDC redirect on the custom scheme (com.sdc.crm.mobile://callback)
-/// and hands it back to <see cref="WebAuthenticator"/> to complete the login.
+/// Receives the OIDC redirects on the custom scheme and hands them back to <see cref="WebAuthenticator"/>:
+/// com.sdc.crm.mobile://callback (sign-in) and com.sdc.crm.mobile://signout (end-session after logout).
+/// The intent filter matches the scheme only, so both hosts are handled.
 /// </summary>
 [Activity(NoHistory = true, LaunchMode = LaunchMode.SingleTop, Exported = true)]
 [IntentFilter(

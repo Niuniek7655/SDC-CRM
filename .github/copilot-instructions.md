@@ -179,7 +179,7 @@ Use business-oriented commands and methods.
 
 Prefer names such as:
 
-- `CreateLead`
+- `RegisterLead`
 - `AssignLeadToSalesperson`
 - `QualifyLead`
 - `RejectLead`

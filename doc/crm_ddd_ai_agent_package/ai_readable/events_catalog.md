@@ -1,66 +1,69 @@
-# Katalog zdarzeń i komunikacji między bounded contextami
+# Katalog zdarzeń
 
-## Integration events — przepływy między contextami
+Wersja maszynowa: [`events_catalog.json`](events_catalog.json). Oznaczenia: ✔ zaimplementowane, ◐ częściowo,
+○ planowane, ❓ do decyzji. Konwencje nazw: [`naming_decisions.md`](naming_decisions.md).
 
-| Event | Publikuje | Subskrybuje | Kiedy |
-|---|---|---|---|
-| `CustomerCreated / CustomerUpdated` | Customer.Customer Management | Lead & Pipeline, Sales Activity, Reporting & Analytics | po utworzeniu lub zmianie danych klienta |
-| `OpportunityWon` | Opportunity.Lead & Pipeline | Sales Order Capture, Reporting & Analytics | gdy sprzedaż została wygrana |
-| `OpportunityLost` | Opportunity.Lead & Pipeline | Reporting & Analytics | gdy szansa została przegrana |
-| `SalesOrderCreated` | SalesOrder.Sales Order Capture | Reporting & Analytics | po utworzeniu szkicu zamówienia |
-| `SalesOrderSubmitted` | SalesOrder.Sales Order Capture | Backoffice Order Processing, Reporting & Analytics | gdy handlowiec przekazuje kompletne zamówienie |
-| `MissingInformationRequested` | OrderProcess.Backoffice Order Processing | Sales Activity | gdy backoffice wykryje braki w danych |
-| `MissingInformationProvided` | Sales Activity / Backoffice | Backoffice Order Processing | gdy handlowiec uzupełni brakujące dane |
-| `OrderAcceptedForFulfillment` | OrderProcess.Backoffice Order Processing | Integration Context, Reporting & Analytics | gdy zamówienie zostaje zaakceptowane do realizacji |
-| `InvoiceRequested` | Backoffice / Integration | Integration Context | gdy trzeba wystawić fakturę lub przekazać dane do ERP |
-| `InvoiceIssued` | Integration Context | Reporting & Analytics, Backoffice Order Processing | gdy faktura została wystawiona |
-| `PaymentReceived` | Integration Context | Reporting & Analytics, Backoffice Order Processing | gdy pojawi się informacja o płatności |
-| `OrderCompleted` | OrderProcess.Backoffice Order Processing | Reporting & Analytics, Sales Activity, Integration Context | gdy proces obsługi zamówienia zostaje zakończony |
+Stan publikacji: zdarzenia są rejestrowane w `Entity.DomainEvents`, ale jeszcze nie są publikowane (T-02).
+Zdarzenia z kolumną „Audyt” = tak zasilają `AuditLog` (CRM-030, sekcja „Auditing” w `.github/copilot-instructions.md`).
 
-## Wszystkie zdarzenia domenowe/integracyjne z agregatów
+## Zdarzenia domenowe
 
-| Event | Context | Aggregate |
+| Zdarzenie | Kontekst | Agregat | Komenda | Kluczowe dane | Audyt | Stan | Story |
+|---|---|---|---|---|---|---|---|
+| `CustomerCreated` | Customer Management | `Customer` | `CreateCustomer` | CustomerId, nazwa, TaxIdentifier | — | ○ | CRM-007 |
+| `ContactPersonAdded` | Customer Management | `Customer` | `AddContactPerson` | CustomerId, ContactPersonId, czy główny | — | ○ | CRM-008 |
+| `LeadRegistered` | Sales Pipeline | `Lead` | `RegisterLead` | LeadId, CompanyName, AssignedSalespersonId | — | ✔ | CRM-001 |
+| `LeadAssigned` | Sales Pipeline | `Lead` | `AssignLeadToSalesperson` | LeadId, poprzedni i nowy właściciel | tak | ○ | CRM-004 |
+| `LeadQualified` | Sales Pipeline | `Lead` | `QualifyLead` | LeadId | — | ◐ | CRM-005 |
+| `LeadRejected` | Sales Pipeline | `Lead` | `RejectLead` | LeadId, powód odrzucenia | tak | ◐ | CRM-006 |
+| `OpportunityCreated` | Sales Pipeline | `Opportunity` | `CreateOpportunityFromLead` | OpportunityId, LeadId, CustomerId, właściciel, etap | — | ○ | CRM-005, CRM-014 |
+| `OpportunityStageChanged` | Sales Pipeline | `Opportunity` | `ChangeOpportunityStage` | OpportunityId, etap poprzedni i nowy | tak | ○ | CRM-015 |
+| `OpportunityWon` | Sales Pipeline | `Opportunity` | `WinOpportunity` | OpportunityId, CustomerId, wartość | tak | ○ | CRM-016 |
+| `OpportunityLost` | Sales Pipeline | `Opportunity` | `LoseOpportunity` | OpportunityId, LostReason | tak | ○ | CRM-017 |
+| `SalesActivityLogged` | Sales Activities | `SalesActivity` | `LogSalesActivity` | SalesActivityId, kanał, RelatedTo, data, autor | — | ○ | CRM-011 |
+| `SalesNoteAdded` | Sales Activities | `SalesActivity` | `AddSalesNote` | SalesActivityId, RelatedTo, autor | — | ○ | CRM-010 |
+| `FollowUpScheduled` | Sales Activities | `SalesActivity` | `ScheduleFollowUp` | SalesActivityId, RelatedTo, termin, właściciel | — | ○ | CRM-012 |
+| `FollowUpCompleted` | Sales Activities | `SalesActivity` | `CompleteFollowUp` | SalesActivityId, data wykonania | — | ○ | CRM-013 |
+| `SalesOrderCreated` | Order Capture | `SalesOrder` | `CreateOrderFromOpportunity` | SalesOrderId, OpportunityId, CustomerId, właściciel | — | ○ | CRM-018 |
+| `SalesOrderSubmittedToBackoffice` | Order Capture | `SalesOrder` | `SubmitOrderToBackoffice` | SalesOrderId, numer przekazania, przekazujący | tak | ○ | CRM-020, CRM-026 |
+| `BackofficeOrderCaseOpened` | Order Backoffice | `BackofficeOrderCase` | `OpenBackofficeOrderCase` | BackofficeOrderCaseId, SalesOrderId | — | ○ | CRM-020, CRM-022 |
+| `BackofficeOrderAssigned` | Order Backoffice | `BackofficeOrderCase` | `AssignBackofficeOrder` | BackofficeOrderCaseId, pracownik, przypisujący | tak | ○ | CRM-023 |
+| `BackofficeOrderStatusChanged` | Order Backoffice | `BackofficeOrderCase` | `ChangeBackofficeOrderStatus` | BackofficeOrderCaseId, status poprzedni i nowy | tak | ○ | CRM-024 |
+| `BackofficeOrderBlocked` | Order Backoffice | `BackofficeOrderCase` | `ChangeBackofficeOrderStatus` | BackofficeOrderCaseId, BlockingReason | tak | ○ | CRM-024 |
+| `BackofficeCommentAdded` | Order Backoffice | `BackofficeOrderCase` | `AddBackofficeComment` | BackofficeOrderCaseId, widoczność, autor | — | ○ | CRM-025 |
+| `BackofficeOrderReturnedToSales` | Order Backoffice | `BackofficeOrderCase` | `ReturnOrderToSales` | BackofficeOrderCaseId, SalesOrderId, komentarz | tak | ○ | CRM-026 |
+| `BackofficeOrderCompleted` | Order Backoffice | `BackofficeOrderCase` | `CompleteOrder` | BackofficeOrderCaseId, SalesOrderId, CompletionDate | tak | ○ | CRM-027 |
+| `BackofficeOrderCancelled` | Order Backoffice | `BackofficeOrderCase` | `CancelOrder` | BackofficeOrderCaseId, SalesOrderId, CancellationReason | tak | ❓ Q-07 | — |
+| `IntegrationJobSucceeded` | Integrations | `IntegrationJob` | `ExportOrderToErp`, `RetryIntegrationJob` | IntegrationJobId, system, ExternalId | — | ○ | CRM-038 |
+| `IntegrationJobFailed` | Integrations | `IntegrationJob` | `ExportOrderToErp`, `RetryIntegrationJob` | IntegrationJobId, system, numer próby, kod błędu | — | ○ | CRM-038 |
+
+Zmiany ról i uprawnień również podlegają audytowi, ale zachodzą w dostawcy tożsamości (Q-12).
+
+## Zdarzenia integracyjne
+
+Publikowane przez warstwę aplikacji po zapisie transakcji (docelowo outbox); agregat ich nie publikuje.
+
+| Zdarzenie integracyjne | Zdarzenie źródłowe | Publikuje | Odbiorcy → reakcja | Stan |
+|---|---|---|---|---|
+| `SalesOrderSubmittedIntegrationEvent` | `SalesOrderSubmittedToBackoffice` | Order Capture | Order Backoffice → `OpenBackofficeOrderCase` (lub wznowienie, Q-08); Reporting & KPI → projekcje | ○ |
+| `BackofficeOrderReturnedToSalesIntegrationEvent` | `BackofficeOrderReturnedToSales` | Order Backoffice | Order Capture → `ReopenSalesOrderAfterReturn`; Reporting & KPI → projekcje; Sales Activities → `FollowUp` tylko po decyzji Q-09 | ○ |
+| `BackofficeOrderCompletedIntegrationEvent` | `BackofficeOrderCompleted` | Order Backoffice | Integrations → `ExportOrderToErp` (Could Have, Q-10); Reporting & KPI → projekcje | ○ |
+| `BackofficeOrderCancelledIntegrationEvent` | `BackofficeOrderCancelled` | Order Backoffice | Order Capture, Reporting & KPI — po decyzji Q-07 | ❓ |
+
+Zdarzenia zwrotne z ERP (wystawienie faktury, płatność) nie są częścią modelu do czasu decyzji Q-10.
+
+## Zasilanie read modeli
+
+Projekcje i audyt subskrybują zdarzenia publikowane po zapisie (T-02). Do tego czasu widoki czytają dane
+modułów bezpośrednio (T-06). Przy wydzieleniu modułu do osobnej usługi zdarzenia z tej tabeli staną się
+zdarzeniami integracyjnymi.
+
+| Read model | Story | Zdarzenia |
 |---|---|---|
-| `CustomerCreated` | Customer Management | Customer |
-| `CustomerUpdated` | Customer Management | Customer |
-| `ContactPersonAdded` | Customer Management | Customer |
-| `CustomerStatusChanged` | Customer Management | Customer |
-| `LeadRegistered` | Lead & Pipeline | Lead |
-| `LeadAssigned` | Lead & Pipeline | Lead |
-| `LeadQualified` | Lead & Pipeline | Lead |
-| `LeadRejected` | Lead & Pipeline | Lead |
-| `OpportunityCreated` | Lead & Pipeline | Opportunity |
-| `OpportunityStageChanged` | Lead & Pipeline | Opportunity |
-| `OpportunityWon` | Lead & Pipeline | Opportunity |
-| `OpportunityLost` | Lead & Pipeline | Opportunity |
-| `PipelineConfigured` | Lead & Pipeline | Pipeline |
-| `PipelineStageChanged` | Lead & Pipeline | Pipeline |
-| `ActivityRegistered` | Sales Activity | SalesActivity |
-| `ActivityCompleted` | Sales Activity | SalesActivity |
-| `FollowUpScheduled` | Sales Activity | FollowUpTask |
-| `FollowUpCompleted` | Sales Activity | FollowUpTask |
-| `NoteAdded` | Sales Activity | Note |
-| `NoteUpdated` | Sales Activity | Note |
-| `SalesOrderCreated` | Sales Order Capture | SalesOrder |
-| `SalesOrderSubmitted` | Sales Order Capture | SalesOrder |
-| `SalesOrderCancelled` | Sales Order Capture | SalesOrder |
-| `OrderProcessingStarted` | Backoffice Order Processing | OrderProcess |
-| `OrderAssigned` | Backoffice Order Processing | OrderProcess |
-| `MissingInformationRequested` | Backoffice Order Processing | OrderProcess |
-| `MissingInformationProvided` | Backoffice Order Processing | OrderProcess |
-| `OrderAcceptedForFulfillment` | Backoffice Order Processing | OrderProcess |
-| `OrderCompleted` | Backoffice Order Processing | OrderProcess |
-| `OrderRejected` | Backoffice Order Processing | OrderProcess |
-| `BackofficeTaskCreated` | Backoffice Order Processing | BackofficeTask |
-| `BackofficeTaskCompleted` | Backoffice Order Processing | BackofficeTask |
-| `IntegrationJobCreated` | Integration Context | IntegrationJob |
-| `IntegrationJobSucceeded` | Integration Context | IntegrationJob |
-| `IntegrationJobFailed` | Integration Context | IntegrationJob |
-| `ExternalMappingCreated` | Integration Context | ExternalSystemMapping |
-| `InvoiceRequested` | Integration Context | InvoiceRequest |
-| `InvoiceIssued` | Integration Context | InvoiceRequest |
-| `PaymentReceived` | Integration Context | InvoiceRequest |
-| `UserCreated` | Identity & Access | User |
-| `UserDeactivated` | Identity & Access | User |
-| `RoleAssigned` | Identity & Access | Role |
-| `UserAssignedToSalesTeam` | Identity & Access | SalesTeam |
+| `SalespersonDashboard` | CRM-031 | `LeadRegistered`, `LeadAssigned`, `LeadQualified`, `LeadRejected`, `OpportunityCreated`, `OpportunityWon`, `OpportunityLost`, `FollowUpScheduled`, `FollowUpCompleted`, `SalesOrderSubmittedToBackoffice`, `BackofficeOrderReturnedToSales` |
+| `SalesManagerDashboard` | CRM-032 | `OpportunityCreated`, `OpportunityStageChanged`, `OpportunityWon`, `OpportunityLost`, `SalesActivityLogged`, `SalesNoteAdded`, `FollowUpCompleted` |
+| `BackofficeReport` | CRM-033 | `BackofficeOrderCaseOpened`, `BackofficeOrderAssigned`, `BackofficeOrderStatusChanged`, `BackofficeOrderBlocked`, `BackofficeOrderReturnedToSales`, `BackofficeOrderCompleted` |
+| `Customer360` (`GetCustomer360Query`) | CRM-009 | `CustomerCreated`, `ContactPersonAdded`, `LeadRegistered`, `OpportunityCreated`, `OpportunityWon`, `OpportunityLost`, `SalesActivityLogged`, `SalesNoteAdded`, `SalesOrderCreated`, `BackofficeOrderCompleted` |
+| `SalesOrderStatus` (`GetSalesOrderStatusQuery`) | CRM-021 | `SalesOrderCreated`, `SalesOrderSubmittedToBackoffice`, `BackofficeOrderCaseOpened`, `BackofficeOrderStatusChanged`, `BackofficeOrderBlocked`, `BackofficeCommentAdded`, `BackofficeOrderReturnedToSales`, `BackofficeOrderCompleted` |
+| `AuditLog` | CRM-030 | `LeadAssigned`, `LeadRejected`, `OpportunityStageChanged`, `OpportunityWon`, `OpportunityLost`, `SalesOrderSubmittedToBackoffice`, `BackofficeOrderAssigned`, `BackofficeOrderStatusChanged`, `BackofficeOrderBlocked`, `BackofficeOrderReturnedToSales`, `BackofficeOrderCompleted`, `BackofficeOrderCancelled` |
+

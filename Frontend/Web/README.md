@@ -75,7 +75,8 @@ Klient SPA `sdc-crm-web` musi być zarejestrowany w SSO (patrz
 
 ## Wymagania
 
-- Node.js 20.19+ / 22.12+ (zgodnie z wymaganiami Angular 22)
+- Node.js `^22.22.3`, `^24.15.0` lub `>=26.0.0` (wymóg Angular CLI 22, zapisany w `engines` w `package.json`);
+  zalecany Node 24 LTS - plik `.nvmrc` (np. `nvm install 24`, `nvm use 24.21.0`)
 - npm 10+
 
 ## Uruchamianie

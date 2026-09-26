@@ -6,6 +6,8 @@ Ten katalog zawiera roboczy zestaw plików Markdown dla projektu CRM sprzedażow
 
 ## Pliki
 
+Punkt wyjścia: `CRM.md` — pierwotny brief projektu (założenia bazowe: moduły, wymagania niefunkcjonalne).
+
 1. `01-slownik-jezyka-wszechobecnego.md`  
    Słownik pojęć domenowych w podejściu DDD.
 

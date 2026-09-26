@@ -82,10 +82,17 @@
     <File Path=".github/prompts/design-ddd-aggregate.prompt.md" />
     <File Path=".github/prompts/implement-vertical-slice-tdd.prompt.md" />
   </Folder>
+  <Folder Name="/.github/workflows/">
+    <File Path=".github/workflows/backend.yml" />
+    <File Path=".github/workflows/mobile.yml" />
+    <File Path=".github/workflows/web.yml" />
+  </Folder>
   <Folder Name="/Backend/">
     <File Path="Backend/Directory.Build.props" />
     <File Path="Backend/README.md" />
     <File Path="Backend/SDC.CRM.Backend.slnf" />
+    <File Path="Backend/Dockerfile" />
+    <File Path="Backend/.dockerignore" />
   </Folder>
   <Folder Name="/Backend/src/">
     <Project Path="Backend/src/SDC.CRM.Domain/SDC.CRM.Domain.csproj" />
@@ -112,6 +119,7 @@
     <File Path="Frontend/Web/README.md" />
     <File Path="Frontend/Web/angular.json" />
     <File Path="Frontend/Web/package.json" />
+    <File Path="Frontend/Web/.nvmrc" />
     <File Path="Frontend/Web/proxy.conf.json" />
     <File Path="Frontend/Web/tsconfig.app.json" />
     <File Path="Frontend/Web/tsconfig.json" />
@@ -131,6 +139,17 @@
     <File Path="Frontend/Web/src/app/app.ts" />
   </Folder>
   <Folder Name="/Frontend/Web/src/app/core/" />
+  <Folder Name="/Frontend/Web/src/app/core/auth/">
+    <File Path="Frontend/Web/src/app/core/auth/auth.config.ts" />
+    <File Path="Frontend/Web/src/app/core/auth/auth.guard.spec.ts" />
+    <File Path="Frontend/Web/src/app/core/auth/auth.guard.ts" />
+    <File Path="Frontend/Web/src/app/core/auth/auth.interceptor.spec.ts" />
+    <File Path="Frontend/Web/src/app/core/auth/auth.interceptor.ts" />
+    <File Path="Frontend/Web/src/app/core/auth/auth.service.ts" />
+    <File Path="Frontend/Web/src/app/core/auth/oauth-storage.spec.ts" />
+    <File Path="Frontend/Web/src/app/core/auth/oauth-storage.ts" />
+    <File Path="Frontend/Web/src/app/core/auth/roles.ts" />
+  </Folder>
   <Folder Name="/Frontend/Web/src/app/core/interceptors/">
     <File Path="Frontend/Web/src/app/core/interceptors/error-interceptor.ts" />
   </Folder>
@@ -138,16 +157,23 @@
     <File Path="Frontend/Web/src/app/core/models/lead.model.ts" />
   </Folder>
   <Folder Name="/Frontend/Web/src/app/features/" />
+  <Folder Name="/Frontend/Web/src/app/features/errors/forbidden/">
+    <File Path="Frontend/Web/src/app/features/errors/forbidden/forbidden.ts" />
+  </Folder>
   <Folder Name="/Frontend/Web/src/app/features/leads/">
     <File Path="Frontend/Web/src/app/features/leads/leads.routes.ts" />
+    <File Path="Frontend/Web/src/app/features/leads/lead-status-label.spec.ts" />
+    <File Path="Frontend/Web/src/app/features/leads/lead-status-label.ts" />
   </Folder>
   <Folder Name="/Frontend/Web/src/app/features/leads/data/">
     <File Path="Frontend/Web/src/app/features/leads/data/lead.service.ts" />
+    <File Path="Frontend/Web/src/app/features/leads/data/lead.service.spec.ts" />
   </Folder>
   <Folder Name="/Frontend/Web/src/app/features/leads/pages/" />
   <Folder Name="/Frontend/Web/src/app/features/leads/pages/lead-list/">
     <File Path="Frontend/Web/src/app/features/leads/pages/lead-list/lead-list.html" />
     <File Path="Frontend/Web/src/app/features/leads/pages/lead-list/lead-list.scss" />
+    <File Path="Frontend/Web/src/app/features/leads/pages/lead-list/lead-list.spec.ts" />
     <File Path="Frontend/Web/src/app/features/leads/pages/lead-list/lead-list.ts" />
   </Folder>
   <Folder Name="/Frontend/Web/src/app/features/leads/pages/lead-register/">

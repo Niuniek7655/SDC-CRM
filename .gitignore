@@ -214,6 +214,9 @@ out/
 .env.test.local
 .env.production.local
 
+# JetBrains HTTP Client private environment (access tokens used by doc/testy/api/crm-api.http)
+http-client.private.env.json
+
 # TypeScript cache
 *.tsbuildinfo
 

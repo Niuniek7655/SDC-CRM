@@ -25,6 +25,10 @@ Punkt wyjścia: `CRM.md` — pierwotny brief projektu (założenia bazowe: modu�
    Model domeny DDD dla ludzi i agentów AI: bounded contexty, agregaty, zdarzenia, procesy, diagramy
    oraz aktualny stan implementacji. Punkt startowy: [crm_ddd_ai_agent_package/README.md](crm_ddd_ai_agent_package/README.md).
 
+6. `testy/`  
+   Uruchomienie środowiska (backend, web, mobile Android i Windows) oraz scenariusze testów ręcznych web i mobile
+   i testy endpointów API ze skryptem dymnym. Punkt startowy: [testy/README.md](testy/README.md).
+
 Nazwy komend, zdarzeń i statusów są wspólne dla słownika, backlogu i pakietu DDD. Spójność sprawdza
 `crm_ddd_ai_agent_package/tools/validate-docs.ps1`, a diagramy generuje `crm_ddd_ai_agent_package/tools/render-diagrams.ps1`.
 

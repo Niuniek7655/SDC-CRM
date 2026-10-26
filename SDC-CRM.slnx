@@ -163,6 +163,18 @@
     <File Path="doc/crm_ddd_ai_agent_package/tools/render-diagrams.ps1" />
     <File Path="doc/crm_ddd_ai_agent_package/tools/validate-docs.ps1" />
   </Folder>
+  <Folder Name="/doc/testy/">
+    <File Path="doc/testy/README.md" />
+    <File Path="doc/testy/01-uruchomienie-srodowiska.md" />
+    <File Path="doc/testy/02-scenariusze-web.md" />
+    <File Path="doc/testy/03-scenariusze-mobile.md" />
+    <File Path="doc/testy/04-testy-endpointow-api.md" />
+  </Folder>
+  <Folder Name="/doc/testy/api/">
+    <File Path="doc/testy/api/crm-api.http" />
+    <File Path="doc/testy/api/http-client.env.json" />
+    <File Path="doc/testy/api/test-api.ps1" />
+  </Folder>
   <Folder Name="/Frontend/" />
   <Folder Name="/Frontend/Web/">
     <File Path="Frontend/Web/.editorconfig" />

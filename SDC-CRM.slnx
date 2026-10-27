@@ -86,6 +86,7 @@
     <File Path=".github/workflows/backend.yml" />
     <File Path=".github/workflows/mobile.yml" />
     <File Path=".github/workflows/web.yml" />
+    <File Path=".github/workflows/test-assets.yml" />
   </Folder>
   <Folder Name="/Backend/">
     <File Path="Backend/Directory.Build.props" />
@@ -162,6 +163,23 @@
     <File Path="doc/crm_ddd_ai_agent_package/tools/mermaid-config.json" />
     <File Path="doc/crm_ddd_ai_agent_package/tools/render-diagrams.ps1" />
     <File Path="doc/crm_ddd_ai_agent_package/tools/validate-docs.ps1" />
+  </Folder>
+  <Folder Name="/doc/testy/">
+    <File Path="doc/testy/README.md" />
+    <File Path="doc/testy/01-uruchomienie-srodowiska.md" />
+    <File Path="doc/testy/02-scenariusze-web.md" />
+    <File Path="doc/testy/03-scenariusze-mobile.md" />
+    <File Path="doc/testy/04-testy-endpointow-api.md" />
+    <File Path="doc/testy/05-pokrycie-i-regresje.md" />
+  </Folder>
+  <Folder Name="/doc/testy/api/">
+    <File Path="doc/testy/api/crm-api.http" />
+    <File Path="doc/testy/api/http-client.env.json" />
+    <File Path="doc/testy/api/test-api.ps1" />
+  </Folder>
+  <Folder Name="/doc/testy/api/tests/">
+    <File Path="doc/testy/api/tests/test-smoke-runner.mjs" />
+    <File Path="doc/testy/api/tests/smoke-fixture.mjs" />
   </Folder>
   <Folder Name="/Frontend/" />
   <Folder Name="/Frontend/Web/">

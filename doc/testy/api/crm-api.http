@@ -1,0 +1,362 @@
+# SDC-CRM API - żądania do klienta HTTP w Riderze (JetBrains HTTP Client).
+#
+# 1. Wybierz środowisko "local" (http-client.env.json: baseUrl).
+# 2. Tokeny zapisz w http-client.private.env.json obok tego pliku (plik jest ignorowany przez git):
+#      { "local": { "salespersonToken": "...", "otherSalesToken": "...", "backofficeToken": "..." } }
+#    Token: zaloguj się w aplikacji web danym użytkownikiem i w konsoli DevTools wykonaj
+#      copy(sessionStorage.getItem('access_token'))
+# 3. Uruchamiaj pojedyncze żądania albo cały plik ("Run All Requests in File") - testy w blokach > {% %}.
+#
+# Opis scenariuszy: doc/testy/04-testy-endpointow-api.md
+
+### API-01 Moje leady bez tokena -> 401
+GET {{baseUrl}}/api/leads/mine
+X-Correlation-ID: http-client-api-01
+
+> {%
+    client.global.set("ownerAIds", []);
+    client.global.set("ownerBIds", []);
+    client.test("API-01: 401 bez tokena", function () {
+        client.assert(response.status === 401, "Oczekiwano 401, otrzymano " + response.status);
+    });
+    client.test("API-04: X-Correlation-ID wraca w odpowiedzi", function () {
+        client.assert(response.headers.valueOf("X-Correlation-ID") === "http-client-api-01", "Nagłówek: " + response.headers.valueOf("X-Correlation-ID"));
+    });
+%}
+
+### API-02 Rejestracja leada bez tokena -> 401
+POST {{baseUrl}}/api/leads
+Content-Type: application/json
+
+{
+  "companyName": "[SMOKE] Bez tokena",
+  "contactName": "Jan Kowalski",
+  "contactEmail": "jan.kowalski@acme.test"
+}
+
+> {%
+    client.test("API-02: 401 bez tokena", function () {
+        client.assert(response.status === 401, "Oczekiwano 401, otrzymano " + response.status);
+    });
+%}
+
+### API-08 Dokument OpenAPI (tylko środowisko Development)
+GET {{baseUrl}}/openapi/v1.json
+
+> {%
+    client.test("API-08: dokument OpenAPI opisuje /api/leads", function () {
+        client.assert(response.status === 200, "Oczekiwano 200, otrzymano " + response.status);
+        client.assert(response.body.paths["/api/leads"] !== undefined, "Brak ścieżki /api/leads");
+        client.assert(response.body.paths["/api/leads/mine"] !== undefined, "Brak ścieżki /api/leads/mine");
+    });
+%}
+
+### API-10 Moje leady (handlowiec) -> 200
+GET {{baseUrl}}/api/leads/mine
+Authorization: Bearer {{salespersonToken}}
+
+> {%
+    client.test("API-10: 200 i tablica", function () {
+        client.assert(response.status === 200, "Oczekiwano 200, otrzymano " + response.status);
+        client.assert(Array.isArray(response.body), "Oczekiwano tablicy JSON");
+    });
+%}
+
+### API-11 Rejestracja leada ze wszystkimi polami -> 201
+POST {{baseUrl}}/api/leads
+Authorization: Bearer {{salespersonToken}}
+Content-Type: application/json
+X-Correlation-ID: http-client-api-11
+
+{
+  "companyName": "[SMOKE] Acme Sp. z o.o.",
+  "contactName": "Jan Kowalski",
+  "contactEmail": "jan.kowalski@acme.test",
+  "contactPhone": "+48 600 100 200",
+  "source": "Targi"
+}
+
+> {%
+    client.test("API-11: 201 z id i Location", function () {
+        client.assert(response.status === 201, "Oczekiwano 201, otrzymano " + response.status);
+        client.assert(response.body.id, "Brak id w odpowiedzi");
+        client.assert(response.headers.valueOf("Location"), "Brak nagłówka Location");
+    });
+    client.global.set("leadId", response.body.id);
+    if (response.status === 201 && response.body.id) { var ids = client.global.get("ownerAIds") || []; ids.push(response.body.id); client.global.set("ownerAIds", ids); }
+%}
+
+### API-12 Rejestracja leada tylko z polami wymaganymi -> 201
+POST {{baseUrl}}/api/leads
+Authorization: Bearer {{salespersonToken}}
+Content-Type: application/json
+
+{
+  "companyName": "[SMOKE] Minimal",
+  "contactName": "Anna Nowak",
+  "contactEmail": "anna@beta.test"
+}
+
+> {%
+    client.test("API-12: 201", function () {
+        client.assert(response.status === 201, "Oczekiwano 201, otrzymano " + response.status);
+    });
+    client.global.set("leadId", response.body.id);
+    if (response.status === 201 && response.body.id) { var ids = client.global.get("ownerAIds") || []; ids.push(response.body.id); client.global.set("ownerAIds", ids); }
+%}
+
+### API-13 Nowy lead na liście, status New, najnowszy pierwszy
+GET {{baseUrl}}/api/leads/mine
+Authorization: Bearer {{salespersonToken}}
+
+> {%
+    client.test("API-13: ostatnio utworzony lead jest pierwszy i ma status New", function () {
+        var expectedId = client.global.get("leadId");
+        client.assert(response.status === 200, "Oczekiwano 200, otrzymano " + response.status);
+        client.assert(response.body.length > 0, "Lista jest pusta");
+        client.assert(response.body[0].id === expectedId, "Pierwszy na liście: " + response.body[0].id + ", oczekiwano " + expectedId);
+        client.assert(response.body[0].status === "New", "Status: " + response.body[0].status);
+    });
+%}
+
+### API-14 Nazwa firmy z samych spacji -> 400 (reguła domenowa)
+POST {{baseUrl}}/api/leads
+Authorization: Bearer {{salespersonToken}}
+Content-Type: application/json
+
+{
+  "companyName": "   ",
+  "contactName": "Jan Kowalski",
+  "contactEmail": "jan.kowalski@acme.test"
+}
+
+> {%
+    client.test("API-14: 400 z regułą domenową", function () {
+        client.assert(response.status === 400, "Oczekiwano 400, otrzymano " + response.status);
+        client.assert(response.body.detail === "A lead must have a company name.", "detail: " + response.body.detail);
+    });
+%}
+
+### API-15 Osoba kontaktowa z samych spacji -> 400 (reguła domenowa)
+POST {{baseUrl}}/api/leads
+Authorization: Bearer {{salespersonToken}}
+Content-Type: application/json
+
+{
+  "companyName": "[SMOKE] Beta",
+  "contactName": "   ",
+  "contactEmail": "jan.kowalski@acme.test"
+}
+
+> {%
+    client.test("API-15: 400 z regułą domenową", function () {
+        client.assert(response.status === 400, "Oczekiwano 400, otrzymano " + response.status);
+        client.assert(response.body.detail === "A lead must have a contact name.", "detail: " + response.body.detail);
+    });
+%}
+
+### API-16 E-mail bez @ -> 400 (value object Email)
+POST {{baseUrl}}/api/leads
+Authorization: Bearer {{salespersonToken}}
+Content-Type: application/json
+
+{
+  "companyName": "[SMOKE] Gamma",
+  "contactName": "Jan Kowalski",
+  "contactEmail": "jan.kowalski"
+}
+
+> {%
+    client.test("API-16: 400 dla niepoprawnego e-maila", function () {
+        client.assert(response.status === 400, "Oczekiwano 400, otrzymano " + response.status);
+        client.assert(response.body.detail.indexOf("is not valid") >= 0, "detail: " + response.body.detail);
+    });
+%}
+
+### API-18 Brak pola companyName -> 400
+POST {{baseUrl}}/api/leads
+Authorization: Bearer {{salespersonToken}}
+Content-Type: application/json
+
+{
+  "contactName": "Jan Kowalski",
+  "contactEmail": "jan.kowalski@acme.test"
+}
+
+> {%
+    client.test("API-18: 400", function () {
+        client.assert(response.status === 400, "Oczekiwano 400, otrzymano " + response.status);
+    });
+%}
+
+### API-19 Niepoprawny JSON -> 400
+POST {{baseUrl}}/api/leads
+Authorization: Bearer {{salespersonToken}}
+Content-Type: application/json
+
+{"companyName":
+
+> {%
+    client.test("API-19: 400", function () {
+        client.assert(response.status === 400, "Oczekiwano 400, otrzymano " + response.status);
+    });
+%}
+
+### API-20 assignedSalespersonId w treści jest ignorowany (właściciel z tokena)
+POST {{baseUrl}}/api/leads
+Authorization: Bearer {{salespersonToken}}
+Content-Type: application/json
+
+{
+  "companyName": "[SMOKE] Owner",
+  "contactName": "Jan Kowalski",
+  "contactEmail": "jan.kowalski@acme.test",
+  "assignedSalespersonId": "{{$uuid}}"
+}
+
+> {%
+    client.test("API-20: 201", function () {
+        client.assert(response.status === 201, "Oczekiwano 201, otrzymano " + response.status);
+    });
+    client.global.set("leadId", response.body.id);
+    if (response.status === 201 && response.body.id) { var ids = client.global.get("ownerAIds") || []; ids.push(response.body.id); client.global.set("ownerAIds", ids); }
+%}
+
+### API-20 (kontrola) Lead trafił na listę wywołującego
+GET {{baseUrl}}/api/leads/mine
+Authorization: Bearer {{salespersonToken}}
+
+> {%
+    client.test("API-20: lead na liście właściciela z tokena", function () {
+        var expectedId = client.global.get("leadId");
+        var found = response.body.some(function (lead) { return lead.id === expectedId; });
+        client.assert(found, "Lead " + expectedId + " nie występuje na liście wywołującego");
+    });
+%}
+
+
+### API-31 Użytkownik B tworzy pierwszy własny rekord
+POST {{baseUrl}}/api/leads
+Authorization: Bearer {{otherSalesToken}}
+Content-Type: application/json
+
+{"companyName":"[SMOKE] B1","contactName":"Anna","contactEmail":"anna@example.test"}
+
+> {%
+    client.test("API-31: B tworzy własny rekord", function () {
+        client.assert(response.status === 201 && response.body.id, "Brak 201/id B1");
+    });
+    if (response.status === 201 && response.body.id) client.global.set("ownerBIds", [response.body.id]);
+%}
+
+### API-32 Użytkownik B tworzy drugi własny rekord
+POST {{baseUrl}}/api/leads
+Authorization: Bearer {{otherSalesToken}}
+Content-Type: application/json
+
+{"companyName":"[SMOKE] B2","contactName":"Anna","contactEmail":"anna@example.test"}
+
+> {%
+    client.test("API-32: B tworzy drugi własny rekord", function () {
+        client.assert(response.status === 201 && response.body.id, "Brak 201/id B2");
+    });
+    if (response.status === 201 && response.body.id) { var ids = client.global.get("ownerBIds") || []; ids.push(response.body.id); client.global.set("ownerBIds", ids); }
+%}
+
+### API-30 B widzi oba własne rekordy i nie widzi żadnego rekordu A
+GET {{baseUrl}}/api/leads/mine
+Authorization: Bearer {{otherSalesToken}}
+
+> {%
+    client.test("API-30: izolacja B", function () {
+        var own = client.global.get("ownerBIds") || [];
+        var foreign = client.global.get("ownerAIds") || [];
+        client.assert(own.length === 2 && foreign.length === 3, "Uruchom cały plik od API-01: wymagane trzy rekordy A i dwa B");
+        client.assert(response.status === 200 && Array.isArray(response.body), "Brak 200/tablicy B");
+        own.forEach(function(id) { client.assert(response.body.some(function(x) { return x.id === id; }), "B nie widzi własnego " + id); });
+        foreign.forEach(function(id) { client.assert(!response.body.some(function(x) { return x.id === id; }), "B widzi cudzy " + id); });
+    });
+%}
+
+### API-33 A widzi swoje rekordy i nie widzi żadnego B
+GET {{baseUrl}}/api/leads/mine
+Authorization: Bearer {{salespersonToken}}
+
+> {%
+    client.test("API-33: izolacja A", function () {
+        var own = client.global.get("ownerAIds") || [];
+        var foreign = client.global.get("ownerBIds") || [];
+        client.assert(own.length === 3 && foreign.length === 2, "Wymagane dane obu użytkowników");
+        client.assert(response.status === 200 && Array.isArray(response.body), "Brak 200/tablicy A");
+        own.forEach(function(id) { client.assert(response.body.some(function(x) { return x.id === id; }), "A nie widzi własnego " + id); });
+        foreign.forEach(function(id) { client.assert(!response.body.some(function(x) { return x.id === id; }), "A widzi cudzy " + id); });
+    });
+%}
+
+### API-40 Backoffice: moje leady -> 403
+GET {{baseUrl}}/api/leads/mine
+Authorization: Bearer {{backofficeToken}}
+
+> {%
+    client.test("API-40: 403", function () {
+        client.assert(response.status === 403, "Oczekiwano 403, otrzymano " + response.status);
+    });
+%}
+
+### API-41 Backoffice: rejestracja leada -> 403
+POST {{baseUrl}}/api/leads
+Authorization: Bearer {{backofficeToken}}
+Content-Type: application/json
+
+{
+  "companyName": "[SMOKE] Backoffice",
+  "contactName": "Jan Kowalski",
+  "contactEmail": "jan.kowalski@acme.test"
+}
+
+> {%
+    client.test("API-41: 403", function () {
+        client.assert(response.status === 403, "Oczekiwano 403, otrzymano " + response.status);
+    });
+%}
+
+
+
+### API-03 Niepoprawny token
+GET {{baseUrl}}/api/leads/mine
+Authorization: Bearer not-a-valid.jwt.token
+
+> {% client.test("API-03: 401", function () { client.assert(response.status === 401, "Oczekiwano 401"); }); %}
+
+### API-05 Niebezpieczny identyfikator korelacji
+GET {{baseUrl}}/api/leads/mine
+X-Correlation-ID: <b>x</b>
+
+> {% client.test("API-05: bezpieczny nowy identyfikator", function () { client.assert(response.status === 401, "Oczekiwano 401"); client.assert(/^[a-f0-9]{32}$/.test(response.headers.valueOf("X-Correlation-ID")), "Brak nowego trace-id"); }); %}
+
+### API-06 Identyfikator korelacji dłuższy niż 64 znaki
+GET {{baseUrl}}/api/leads/mine
+X-Correlation-ID: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+
+> {% client.test("API-06: nowy identyfikator", function () { client.assert(response.status === 401, "Oczekiwano 401"); client.assert(/^[a-f0-9]{32}$/.test(response.headers.valueOf("X-Correlation-ID")), "Brak nowego trace-id"); }); %}
+
+### API-07 Brak identyfikatora korelacji
+GET {{baseUrl}}/api/leads/mine
+
+> {% client.test("API-07: wygenerowany trace-id", function () { client.assert(response.status === 401, "Oczekiwano 401"); client.assert(/^[a-f0-9]{32}$/.test(response.headers.valueOf("X-Correlation-ID")), "Brak trace-id"); }); %}
+
+### API-17 Pusty e-mail
+POST {{baseUrl}}/api/leads
+Authorization: Bearer {{salespersonToken}}
+Content-Type: application/json
+
+{"companyName":"[SMOKE] Empty email","contactName":"Jan","contactEmail":""}
+
+> {% client.test("API-17: 400", function () { client.assert(response.status === 400, "Oczekiwano 400"); }); %}
+
+### API-21 Korelacja po uwierzytelnieniu
+GET {{baseUrl}}/api/leads/mine
+Authorization: Bearer {{salespersonToken}}
+X-Correlation-ID: http-client-authenticated
+
+> {% client.test("API-21: korelacja", function () { client.assert(response.status === 200, "Oczekiwano 200"); client.assert(response.headers.valueOf("X-Correlation-ID") === "http-client-authenticated", "Zmieniony identyfikator korelacji"); }); %}

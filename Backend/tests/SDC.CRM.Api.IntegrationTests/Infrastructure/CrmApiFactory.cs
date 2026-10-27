@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using NSubstitute;
+using SDC.CRM.Api.Controllers;
 using SDC.CRM.Application.Abstractions;
 using SDC.CRM.Application.Abstractions.Persistence;
 
@@ -20,7 +21,8 @@ namespace SDC.CRM.Api.IntegrationTests.Infrastructure;
 /// </list>
 /// Create one factory per test so substitutes never leak between tests.
 /// </summary>
-public sealed class CrmApiFactory : WebApplicationFactory<Program>
+// Use an API assembly marker: TUnit generates a Program in the test assembly too.
+public sealed class CrmApiFactory : WebApplicationFactory<LeadsController>
 {
     public ILeadRepository Leads { get; } = Substitute.For<ILeadRepository>();
 

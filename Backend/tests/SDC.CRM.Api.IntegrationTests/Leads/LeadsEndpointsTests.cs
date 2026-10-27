@@ -139,6 +139,77 @@ public sealed class LeadsEndpointsTests
             .IsEqualTo("it-correlation-42");
     }
 
+
+    [Test]
+    [Arguments("Salesperson", 200, 201)]
+    [Arguments("SalesManager", 200, 201)]
+    [Arguments("Admin", 200, 201)]
+    [Arguments("BackofficeUser", 403, 403)]
+    [Arguments("BackofficeManager", 403, 403)]
+    public async Task Leads__When_role_is_evaluated__Should_enforce_read_and_write_matrix(string role, int getStatus, int postStatus)
+    {
+        await using var factory = new CrmApiFactory();
+        factory.Leads.ListBySalespersonAsync(SalespersonId, Arg.Any<CancellationToken>()).Returns([]);
+        using var client = factory.CreateClientFor(SalespersonId.ToString(), role);
+
+        using var get = await client.GetAsync(MyLeadsUrl);
+        using var post = await client.PostAsJsonAsync(LeadsUrl, ValidRegisterLeadRequest());
+
+        await Assert.That((int)get.StatusCode).IsEqualTo(getStatus);
+        await Assert.That((int)post.StatusCode).IsEqualTo(postStatus);
+        if (postStatus == 403)
+            await factory.UnitOfWork.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task RegisterLead__When_owner_is_spoofed_in_json__Should_use_authenticated_owner()
+    {
+        await using var factory = new CrmApiFactory();
+        using var client = factory.CreateClientFor(SalespersonId.ToString(), "Salesperson");
+        using var response = await client.PostAsJsonAsync(LeadsUrl, new
+        {
+            companyName = "Acme", contactName = "Jan", contactEmail = "jan@example.test",
+            assignedSalespersonId = "8d1c1a52-1b8e-4f2e-9a57-5c3f0e6a9b11"
+        });
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Created);
+        await factory.Leads.Received(1).AddAsync(Arg.Is<Lead>(x => x.AssignedSalespersonId == SalespersonId), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    [Arguments("companyName")]
+    [Arguments("contactName")]
+    [Arguments("contactEmail")]
+    public async Task RegisterLead__When_required_property_is_missing__Should_return_400_without_saving(string missing)
+    {
+        await using var factory = new CrmApiFactory();
+        using var client = factory.CreateClientFor(SalespersonId.ToString(), "Salesperson");
+        var body = new Dictionary<string, string> { ["companyName"] = "Acme", ["contactName"] = "Jan", ["contactEmail"] = "jan@example.test" };
+        body.Remove(missing);
+        using var response = await client.PostAsJsonAsync(LeadsUrl, body);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+        await factory.UnitOfWork.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+
+    [Test]
+    [Arguments("companyName", 200)]
+    [Arguments("contactName", 200)]
+    [Arguments("contactEmail", 320)]
+    [Arguments("contactPhone", 50)]
+    [Arguments("source", 100)]
+    public async Task RegisterLead__When_field_is_at_or_below_limit__Should_accept_valid_request(string field, int limit)
+    {
+        await using var factory = new CrmApiFactory();
+        using var client = factory.CreateClientFor(SalespersonId.ToString(), "Salesperson");
+        foreach (var length in new[] { limit - 1, limit })
+        {
+            var body = new Dictionary<string, string> { ["companyName"] = "Acme", ["contactName"] = "Jan", ["contactEmail"] = "jan@example.test" };
+            body[field] = field == "contactEmail" ? new string('a', length - "@example.test".Length) + "@example.test" : new string('a', length);
+            using var response = await client.PostAsJsonAsync(LeadsUrl, body);
+            await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Created);
+        }
+    }
+
     // Response shapes as seen by API clients (web/mobile), deserialized with default web JSON options.
     private sealed record RegisterLeadResponseBody(Guid Id);
 

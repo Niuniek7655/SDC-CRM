@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { of, throwError } from 'rxjs';
+import { Subject, of, throwError } from 'rxjs';
 
 import { LeadSummary } from '../../../../core/models/lead.model';
 import { LeadService } from '../../data/lead.service';
@@ -59,6 +59,38 @@ describe('LeadList', () => {
 
     expect(page.textContent).toContain('Nie udało się pobrać leadów');
     expect(page.querySelector('button')?.textContent).toContain('Spróbuj ponownie');
+  });
+
+  it('shows loading until the delayed request completes', () => {
+    const response = new Subject<LeadSummary[]>();
+    leadService.getMyLeads.and.returnValue(response);
+    TestBed.configureTestingModule({ imports: [LeadList], providers: [provideRouter([]), { provide: LeadService, useValue: leadService }] });
+    const fixture = TestBed.createComponent(LeadList);
+    fixture.detectChanges();
+    const page = fixture.nativeElement as HTMLElement;
+    expect(page.textContent).toContain('Wczytywanie');
+    response.next([qualifiedLead]);
+    fixture.detectChanges();
+    expect(page.textContent).not.toContain('Wczytywanie');
+    expect(page.querySelectorAll('tbody tr').length).toBe(1);
+  });
+
+  it('retries through the button and clears the previous error before receiving data', () => {
+    leadService.getMyLeads.and.returnValue(throwError(() => new Error('offline')));
+    TestBed.configureTestingModule({ imports: [LeadList], providers: [provideRouter([]), { provide: LeadService, useValue: leadService }] });
+    const fixture = TestBed.createComponent(LeadList);
+    fixture.detectChanges();
+    const page = fixture.nativeElement as HTMLElement;
+    const retry = new Subject<LeadSummary[]>();
+    leadService.getMyLeads.and.returnValue(retry);
+    (page.querySelector('button') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(page.querySelector('.error-text')).toBeNull();
+    expect(page.textContent).toContain('Wczytywanie');
+    retry.next([qualifiedLead]);
+    fixture.detectChanges();
+    expect(page.querySelectorAll('tbody tr').length).toBe(1);
+    expect(leadService.getMyLeads).toHaveBeenCalledTimes(2);
   });
 });
 

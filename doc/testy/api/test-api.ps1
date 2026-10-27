@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
     Testy dymne (smoke) endpointów SDC-CRM API na działającym lokalnym środowisku.
 
@@ -14,7 +14,7 @@
         copy(sessionStorage.getItem('access_token'))
 
     Skrypt tworzy leady z prefiksem "[SMOKE]" (API nie ma usuwania leadów).
-    Kod wyjścia 1 oznacza co najmniej jeden niezgodny wynik.
+    Kody wyjścia: 0 pełny smoke, 1 błąd asercji, 2 wynik niekompletny (brak tokenów/pominięte grupy).
 
 .EXAMPLE
     ./doc/testy/api/test-api.ps1
@@ -33,10 +33,40 @@ param(
     [string]$OtherSalesToken,
 
     # Token użytkownika z rolą BackofficeUser lub BackofficeManager (np. backoffice).
-    [string]$BackofficeToken
+    [string]$BackofficeToken,
+
+    # Fail before any requests if the full authenticated smoke cannot run.
+    [switch]$RequireAllTokens
 )
 
 $ErrorActionPreference = 'Stop'
+
+if ($RequireAllTokens -and (-not $SalespersonToken -or -not $OtherSalesToken -or -not $BackofficeToken)) {
+    Write-Error 'Pełny smoke wymaga -SalespersonToken, -OtherSalesToken i -BackofficeToken.' -ErrorAction Continue
+    exit 2
+}
+
+# This is only an input sanity check. Authenticity is validated by the real API, never by decoding claims here.
+function Read-TokenSubject {
+    param([string]$Token)
+    try {
+        $parts = $Token.Split('.')
+        if ($parts.Count -ne 3) { throw 'format' }
+        $payload = $parts[1].Replace('-', '+').Replace('_', '/')
+        $payload += '=' * ((4 - $payload.Length % 4) % 4)
+        $claims = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($payload)) | ConvertFrom-Json
+        if ([string]::IsNullOrWhiteSpace([string]$claims.sub)) { throw 'sub' }
+        return [string]$claims.sub
+    }
+    catch { throw 'Token wejściowy nie ma poprawnego payload JWT z sub. Zaloguj się ponownie; nie wklejaj tokena do logów.' }
+}
+$subjects = @()
+foreach ($token in @($SalespersonToken, $OtherSalesToken, $BackofficeToken)) {
+    if ($token) { $subjects += Read-TokenSubject $token }
+}
+if (@($subjects | Select-Object -Unique).Count -ne $subjects.Count) {
+    throw 'Tokeny muszą pochodzić od różnych użytkowników (różne sub). Użyj oddzielnych profili/przeglądarek.'
+}
 Add-Type -AssemblyName System.Net.Http
 
 $handler = New-Object System.Net.Http.HttpClientHandler
@@ -173,7 +203,7 @@ else {
         param($r)
         $id = [Guid]::Empty
         if (-not $r.Data -or -not [Guid]::TryParse([string]$r.Data.id, [ref]$id) -or $id -eq [Guid]::Empty) { return "brak poprawnego id w odpowiedzi: $($r.Text)" }
-        if (-not $r.Location) { return 'brak nagłówka Location' }
+        if (-not $r.Location -or [string]$r.Location -notmatch '/api/leads/mine$') { return 'Location nie wskazuje /api/leads/mine' }
     }
     if ($created.Status -eq 201) { $createdIds += [string]$created.Data.id }
 
@@ -188,7 +218,18 @@ else {
         foreach ($id in $createdIds) {
             $lead = $list | Where-Object { $_.id -eq $id }
             if (-not $lead) { return "lead $id nie występuje na liście właściciela" }
+            if ($lead.contactName -notin @('Jan Kowalski', 'Anna Nowak') -or $lead.contactEmail -notin @('jan.kowalski@acme.test', 'anna@beta.test')) { return "błędne dane kontaktowe leada $id" }
             if ($lead.status -ne 'New') { return "lead $id ma status '$($lead.status)', oczekiwano 'New'" }
+        }
+        if ($createdIds.Count -ne 2) { return 'nie utworzono obu rekordów wymaganych do weryfikacji listy' }
+        $full = $list | Where-Object { $_.id -eq $createdIds[0] }
+        $minimalLead = $list | Where-Object { $_.id -eq $createdIds[1] }
+        if ($full.companyName -ne "[SMOKE] Acme $runId" -or $full.contactEmail -ne 'jan.kowalski@acme.test' -or $full.contactName -ne 'Jan Kowalski') { return 'pełny rekord nie zachował wysłanych danych' }
+        if ($minimalLead.companyName -ne "[SMOKE] Minimal $runId" -or $minimalLead.contactEmail -ne 'anna@beta.test' -or $minimalLead.contactName -ne 'Anna Nowak') { return 'minimalny rekord nie zachował wysłanych danych' }
+        for ($i = 0; $i -lt $list.Count; $i++) {
+            $date = [DateTimeOffset]::MinValue
+            if (-not [DateTimeOffset]::TryParse([string]$list[$i].createdAtUtc, [ref]$date)) { return 'niepoprawna data utworzenia' }
+            if ($i -gt 0 -and [DateTimeOffset]$list[$i-1].createdAtUtc -lt $date) { return 'lista nie jest posortowana malejąco po dacie' }
         }
         if ($createdIds.Count -gt 0 -and $list[0].id -ne $createdIds[-1]) { return "pierwszy na liście jest $($list[0].id), oczekiwano ostatnio utworzonego $($createdIds[-1])" }
     }
@@ -227,18 +268,37 @@ else {
     Write-Host "         Seq: CorrelationId = '$sentId' | Jaeger: usługa sdc-crm-api, tag correlation.id=$sentId" -ForegroundColor DarkGray
 }
 
-# ---------------------------------------------------------------- inny użytkownik sprzedaży
-if (-not $OtherSalesToken) {
-    Skip-Group 'API-30' 'brak -OtherSalesToken'
-}
-elseif ($createdIds.Count -eq 0) {
-    Skip-Group 'API-30' 'brak leadów utworzonych tokenem -SalespersonToken w tym przebiegu'
+
+# ---------------------------------------------------------------- izolacja w obie strony
+if (-not $OtherSalesToken -or -not $SalespersonToken -or $createdIds.Count -eq 0) {
+    Skip-Group 'API-30..33' 'brak dwóch tokenów sprzedaży lub rekordów A'
 }
 else {
-    Test-Status 'API-30' 'Inny użytkownik nie widzi leadów handlowca' (Invoke-Api GET '/api/leads/mine' -Token $OtherSalesToken) 200 {
+    $otherIds = @()
+    foreach ($case in @(@('API-31', 'B1'), @('API-32', 'B2'))) {
+        $createdB = Invoke-Api POST '/api/leads' -Token $OtherSalesToken -Body (New-LeadBody -CompanyName "[SMOKE] $($case[1]) $runId")
+        Test-Status $case[0] "Użytkownik B tworzy własny rekord $($case[1])" $createdB 201 {
+            param($r)
+            $id = [Guid]::Empty
+            if (-not [Guid]::TryParse([string]$r.Data.id, [ref]$id) -or $id -eq [Guid]::Empty) { return 'brak poprawnego id B' }
+        }
+        if ($createdB.Status -eq 201 -and $createdB.Data.id) { $otherIds += [string]$createdB.Data.id }
+    }
+    Test-Status 'API-30' 'B widzi oba własne rekordy i nie widzi żadnego A' (Invoke-Api GET '/api/leads/mine' -Token $OtherSalesToken) 200 {
         param($r)
-        $visible = @(@($r.Data) | Where-Object { $createdIds -contains $_.id })
-        if ($visible.Count -gt 0) { return "widoczne cudze leady: $(($visible | ForEach-Object { $_.id }) -join ', ')" }
+        if (-not $r.Text.TrimStart().StartsWith('[')) { return 'odpowiedź B nie jest tablicą' }
+        if ($otherIds.Count -ne 2) { return 'brak obu rekordów B — test izolacji niekompletny' }
+        $visible = @($r.Data)
+        foreach ($id in $otherIds) { if (-not ($visible | Where-Object { $_.id -eq $id })) { return "B nie widzi własnego $id" } }
+        if (@($visible | Where-Object { $createdIds -contains $_.id }).Count) { return 'B widzi cudze rekordy A' }
+    }
+    Test-Status 'API-33' 'A nadal widzi własne rekordy i nie widzi żadnego B' (Invoke-Api GET '/api/leads/mine' -Token $SalespersonToken) 200 {
+        param($r)
+        if (-not $r.Text.TrimStart().StartsWith('[')) { return 'odpowiedź A nie jest tablicą' }
+        if ($otherIds.Count -ne 2) { return 'brak obu rekordów B — test izolacji niekompletny' }
+        $visible = @($r.Data)
+        foreach ($id in $createdIds) { if (-not ($visible | Where-Object { $_.id -eq $id })) { return "A nie widzi własnego $id" } }
+        if (@($visible | Where-Object { $otherIds -contains $_.id }).Count) { return 'A widzi cudze rekordy B' }
     }
 }
 
@@ -261,5 +321,8 @@ if ($createdIds.Count -gt 0) { Write-Host "Utworzone leady: $($createdIds -join 
 
 $client.Dispose()
 if ($failed.Count -gt 0) { exit 1 }
+if ($skipped -gt 0) { Write-Host 'WYNIK CZĘŚCIOWY — nie jest to pełny odbiór CRM.' -ForegroundColor Yellow; exit 2 }
+Write-Host 'PEŁNY SMOKE ZAKOŃCZONY POWODZENIEM (nie obejmuje wszystkich testów ręcznych ani znanych regresji).' -ForegroundColor Green
+exit 0
 
 

@@ -14,6 +14,8 @@ GET {{baseUrl}}/api/leads/mine
 X-Correlation-ID: http-client-api-01
 
 > {%
+    client.global.set("ownerAIds", []);
+    client.global.set("ownerBIds", []);
     client.test("API-01: 401 bez tokena", function () {
         client.assert(response.status === 401, "Oczekiwano 401, otrzymano " + response.status);
     });
@@ -81,6 +83,7 @@ X-Correlation-ID: http-client-api-11
         client.assert(response.headers.valueOf("Location"), "Brak nagłówka Location");
     });
     client.global.set("leadId", response.body.id);
+    if (response.status === 201 && response.body.id) { var ids = client.global.get("ownerAIds") || []; ids.push(response.body.id); client.global.set("ownerAIds", ids); }
 %}
 
 ### API-12 Rejestracja leada tylko z polami wymaganymi -> 201
@@ -99,6 +102,7 @@ Content-Type: application/json
         client.assert(response.status === 201, "Oczekiwano 201, otrzymano " + response.status);
     });
     client.global.set("leadId", response.body.id);
+    if (response.status === 201 && response.body.id) { var ids = client.global.get("ownerAIds") || []; ids.push(response.body.id); client.global.set("ownerAIds", ids); }
 %}
 
 ### API-13 Nowy lead na liście, status New, najnowszy pierwszy
@@ -215,6 +219,7 @@ Content-Type: application/json
         client.assert(response.status === 201, "Oczekiwano 201, otrzymano " + response.status);
     });
     client.global.set("leadId", response.body.id);
+    if (response.status === 201 && response.body.id) { var ids = client.global.get("ownerAIds") || []; ids.push(response.body.id); client.global.set("ownerAIds", ids); }
 %}
 
 ### API-20 (kontrola) Lead trafił na listę wywołującego
@@ -229,16 +234,62 @@ Authorization: Bearer {{salespersonToken}}
     });
 %}
 
-### API-30 Inny użytkownik sprzedaży nie widzi leada handlowca
+
+### API-31 Użytkownik B tworzy pierwszy własny rekord
+POST {{baseUrl}}/api/leads
+Authorization: Bearer {{otherSalesToken}}
+Content-Type: application/json
+
+{"companyName":"[SMOKE] B1","contactName":"Anna","contactEmail":"anna@example.test"}
+
+> {%
+    client.test("API-31: B tworzy własny rekord", function () {
+        client.assert(response.status === 201 && response.body.id, "Brak 201/id B1");
+    });
+    if (response.status === 201 && response.body.id) client.global.set("ownerBIds", [response.body.id]);
+%}
+
+### API-32 Użytkownik B tworzy drugi własny rekord
+POST {{baseUrl}}/api/leads
+Authorization: Bearer {{otherSalesToken}}
+Content-Type: application/json
+
+{"companyName":"[SMOKE] B2","contactName":"Anna","contactEmail":"anna@example.test"}
+
+> {%
+    client.test("API-32: B tworzy drugi własny rekord", function () {
+        client.assert(response.status === 201 && response.body.id, "Brak 201/id B2");
+    });
+    if (response.status === 201 && response.body.id) { var ids = client.global.get("ownerBIds") || []; ids.push(response.body.id); client.global.set("ownerBIds", ids); }
+%}
+
+### API-30 B widzi oba własne rekordy i nie widzi żadnego rekordu A
 GET {{baseUrl}}/api/leads/mine
 Authorization: Bearer {{otherSalesToken}}
 
 > {%
-    client.test("API-30: brak cudzego leada", function () {
-        var foreignId = client.global.get("leadId");
-        client.assert(response.status === 200, "Oczekiwano 200, otrzymano " + response.status);
-        var found = response.body.some(function (lead) { return lead.id === foreignId; });
-        client.assert(!found, "Widoczny cudzy lead " + foreignId);
+    client.test("API-30: izolacja B", function () {
+        var own = client.global.get("ownerBIds") || [];
+        var foreign = client.global.get("ownerAIds") || [];
+        client.assert(own.length === 2 && foreign.length === 3, "Uruchom cały plik od API-01: wymagane trzy rekordy A i dwa B");
+        client.assert(response.status === 200 && Array.isArray(response.body), "Brak 200/tablicy B");
+        own.forEach(function(id) { client.assert(response.body.some(function(x) { return x.id === id; }), "B nie widzi własnego " + id); });
+        foreign.forEach(function(id) { client.assert(!response.body.some(function(x) { return x.id === id; }), "B widzi cudzy " + id); });
+    });
+%}
+
+### API-33 A widzi swoje rekordy i nie widzi żadnego B
+GET {{baseUrl}}/api/leads/mine
+Authorization: Bearer {{salespersonToken}}
+
+> {%
+    client.test("API-33: izolacja A", function () {
+        var own = client.global.get("ownerAIds") || [];
+        var foreign = client.global.get("ownerBIds") || [];
+        client.assert(own.length === 3 && foreign.length === 2, "Wymagane dane obu użytkowników");
+        client.assert(response.status === 200 && Array.isArray(response.body), "Brak 200/tablicy A");
+        own.forEach(function(id) { client.assert(response.body.some(function(x) { return x.id === id; }), "A nie widzi własnego " + id); });
+        foreign.forEach(function(id) { client.assert(!response.body.some(function(x) { return x.id === id; }), "A widzi cudzy " + id); });
     });
 %}
 
@@ -269,3 +320,43 @@ Content-Type: application/json
     });
 %}
 
+
+
+### API-03 Niepoprawny token
+GET {{baseUrl}}/api/leads/mine
+Authorization: Bearer not-a-valid.jwt.token
+
+> {% client.test("API-03: 401", function () { client.assert(response.status === 401, "Oczekiwano 401"); }); %}
+
+### API-05 Niebezpieczny identyfikator korelacji
+GET {{baseUrl}}/api/leads/mine
+X-Correlation-ID: <b>x</b>
+
+> {% client.test("API-05: bezpieczny nowy identyfikator", function () { client.assert(response.status === 401, "Oczekiwano 401"); client.assert(/^[a-f0-9]{32}$/.test(response.headers.valueOf("X-Correlation-ID")), "Brak nowego trace-id"); }); %}
+
+### API-06 Identyfikator korelacji dłuższy niż 64 znaki
+GET {{baseUrl}}/api/leads/mine
+X-Correlation-ID: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+
+> {% client.test("API-06: nowy identyfikator", function () { client.assert(response.status === 401, "Oczekiwano 401"); client.assert(/^[a-f0-9]{32}$/.test(response.headers.valueOf("X-Correlation-ID")), "Brak nowego trace-id"); }); %}
+
+### API-07 Brak identyfikatora korelacji
+GET {{baseUrl}}/api/leads/mine
+
+> {% client.test("API-07: wygenerowany trace-id", function () { client.assert(response.status === 401, "Oczekiwano 401"); client.assert(/^[a-f0-9]{32}$/.test(response.headers.valueOf("X-Correlation-ID")), "Brak trace-id"); }); %}
+
+### API-17 Pusty e-mail
+POST {{baseUrl}}/api/leads
+Authorization: Bearer {{salespersonToken}}
+Content-Type: application/json
+
+{"companyName":"[SMOKE] Empty email","contactName":"Jan","contactEmail":""}
+
+> {% client.test("API-17: 400", function () { client.assert(response.status === 400, "Oczekiwano 400"); }); %}
+
+### API-21 Korelacja po uwierzytelnieniu
+GET {{baseUrl}}/api/leads/mine
+Authorization: Bearer {{salespersonToken}}
+X-Correlation-ID: http-client-authenticated
+
+> {% client.test("API-21: korelacja", function () { client.assert(response.status === 200, "Oczekiwano 200"); client.assert(response.headers.valueOf("X-Correlation-ID") === "http-client-authenticated", "Zmieniony identyfikator korelacji"); }); %}

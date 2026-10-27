@@ -9,8 +9,9 @@ Narzędzie pomocnicze: DevTools przeglądarki (`F12`), karty **Network**, **Appl
 ## Zasady wykonywania
 
 - Każdy scenariusz zaczynaj od stanu opisanego w „Warunkach wstępnych”.
-- Do pracy jako inny użytkownik używaj **nowego okna incognito / InPrivate** albo najpierw się wyloguj — sesja SSO
-  (ciasteczko na `localhost:5001`) jest wspólna dla wszystkich kart jednego profilu przeglądarki.
+- Do pracy jako inny użytkownik używaj **oddzielnego profilu lub innej przeglądarki** (ew. okna zwykłego i jednego incognito) albo najpierw się wyloguj — sesja SSO
+  (ciasteczko na `localhost:5001`) jest wspólna dla kart i okien tego samego profilu, także między otwartymi oknami incognito.
+  Potwierdź nazwę i różne `sub` tokenów; nie zapisuj tokenów w raporcie.
 - Wynik zapisuj w tabeli podsumowania: ✅ zgodny, ❌ niezgodny (z opisem), ⏭ pominięty.
 - Dane testowe nazywaj z prefiksem, np. `[TEST-WEB] Acme`, żeby łatwo je odróżnić w bazie.
 
@@ -122,7 +123,7 @@ Formularz uznaje tekst złożony z samych spacji za wypełniony, więc żądanie
 
 - **Warunki wstępne:** `handlowiec` ma co najmniej jednego leada (WEB-03).
 - **Kroki:**
-  1. W nowym oknie incognito zaloguj się jako `kierownik.sprzedazy`.
+  1. W oddzielnym profilu lub innej przeglądarce zaloguj się jako `kierownik.sprzedazy`.
   2. Zarejestruj leada `[TEST-WEB] Leada kierownika`.
   3. Wróć do okna `handlowiec` i odśwież listę (`F5`).
 - **Oczekiwany wynik:**
@@ -138,7 +139,7 @@ Formularz uznaje tekst złożony z samych spacji za wypełniony, więc żądanie
 
 ### WEB-12 — Rola backoffice — brak dostępu do leadów
 
-- **Kroki:** w nowym oknie incognito zaloguj się jako `backoffice` / `Test123!`.
+- **Kroki:** w oddzielnym profilu lub innej przeglądarce zaloguj się jako `backoffice` / `Test123!`.
 - **Oczekiwany wynik:**
   1. po zalogowaniu przekierowanie na `/forbidden`: „Brak dostępu” i „Twoje konto nie ma uprawnień do tej sekcji.
      Skontaktuj się z administratorem.”,
@@ -219,3 +220,18 @@ $env:CI = 'true'      # bez tego pierwsze uruchomienie Angular CLI może czekać
 npm run test:ci
 ```
 
+## Uzupełnienia regresyjne (WEB-19…WEB-25)
+
+Dla każdego przypadku zapisz PASS/FAIL/SKIP, przeglądarkę, użytkownika, kod HTTP i identyfikator korelacji; bez tokenów i danych kontaktowych.
+
+| ID | Kroki | Oczekiwany wynik / stan obecny |
+|---|---|---|
+| WEB-19 | Czysta sesja → bezpośrednio `/leads/new` → logowanie handlowca. Powtórz z query string. | Powrót do żądanego formularza. Znana luka: callback kieruje do listy; odnotuj FAIL, nie uznawaj WEB-01 za pokrycie tego przypadku. |
+| WEB-20 | Otwarta lista i formularz → wygaśnięcie access tokena → kolejny GET/POST; następnie powtórz z unieważnionym refresh tokenem oraz wyłączonym SSO (API pozostaje włączone). | Udany refresh używa nowego tokena; nieudany ma czytelny stan i możliwość ponownego logowania. Sprawdź, czy formularz nie gubi wpisanych danych. F5 ze świeżym tokenem nie zastępuje tego testu. |
+| WEB-21 | DevTools: opóźnij sieć. Zapisz formularz i przed odpowiedzią kliknij Anuluj, zmień trasę lub wyloguj się. Osobno ponów po utracie odpowiedzi mimo zapisu. | Brak nawigacji ze starego ekranu/sesji. Policz faktyczne POST oraz rekordy w bazie. Wynik niepewnego zapisu i duplikatów wymaga decyzji o idempotencji; nie zakładaj jej istnienia. |
+| WEB-22 | Po wejściu na formularz odbierz rolę w SSO i uzyskaj świeży token albo doprowadź do 401. Wykonaj GET i POST. | Sprawdź komunikat, zachowanie formularza i odzyskanie sesji. Zakaz wejścia przez guard nie pokrywa odmowy API w otwartym ekranie. |
+| WEB-23 | Każde pole: N−1/N/N+1 znaków (200/200/320/50/100), spacje wokół wartości, Unicode; po 400 popraw dane i ponów. | Poprawne dane są zachowane, błędne nie zapisane; UI pokazuje adekwatny komunikat. Znana luka: API nie waliduje maksymalnych długości, nazwa 201 znaków może pokazać błędny komunikat „wymagana”. |
+| WEB-24 | Przerwij logowanie, odmów dostępu; powtórz callback z błędnym state/nonce w lokalnym środowisku. | Brak nowej uwierzytelnionej sesji z niepoprawnego callbacku, możliwość ponownego logowania, brak tokenów w logach. Nie publikuj URL callbacku zawierającego kod. |
+| WEB-25 | Powtórz logowanie/refresh/logout w dwóch kartach tego samego konta oraz dwóch niezależnych profilach różnych kont. | Dane są zgodne z tokenem konkretnej karty. Zakończenie sesji SSO nie jest tym samym co usunięcie tokenów z każdej karty; zapisz zaobserwowane zachowanie i decyzję o globalnym logout. |
+
+Automaty i jawnie uruchamiane znane regresje: [05-pokrycie-i-regresje.md](05-pokrycie-i-regresje.md).

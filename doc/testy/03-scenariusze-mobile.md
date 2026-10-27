@@ -213,3 +213,17 @@ dotnet build Frontend/Mobile/src/SDC.CRM.Mobile/SDC.CRM.Mobile.csproj -f net10.0
 dotnet build Frontend/Mobile/src/SDC.CRM.Mobile/SDC.CRM.Mobile.csproj -f net10.0-windows10.0.19041.0
 ```
 
+## Uzupełnienia regresyjne (MOB-16…MOB-22)
+
+| ID | Kroki | Oczekiwany wynik / uwagi |
+|---|---|---|
+| MOB-16 | Wstrzymaj odpowiedź refresh tokena, wyloguj A, dopiero zwolnij odpowiedź. Powtórz z zalogowaniem B przed odpowiedzią A. | Tokeny A nie wracają i nie zastępują B. Potwierdzony błąd Core; automat KnownSessionRegressionTests jest Explicit i obecnie czerwony. |
+| MOB-17 | Wstrzymaj GET leadów A, wyloguj A, dopiero zwróć dane. Powtórz A→B. | Lista/sesja B nie przyjmuje odpowiedzi A. Zwykłe sekwencyjne MOB-12/14 tego nie sprawdza. |
+| MOB-18 | Restart i resume offline z ważnym tokenem, potem z tokenem wygasającym za ≤60 s. Osobno wyłącz tylko SSO przy działającym API. | Czytelny komunikat i brak nieobsłużonego wyjątku. Obecnie błąd refresh usuwa sesję; zachowanie przy przejściowej awarii SSO wymaga decyzji, nie jest to obietnica pracy offline. |
+| MOB-19 | Dwa równoczesne odczyty tokena przy wygaśnięciu/rotacji refresh tokena. | Jedno współdzielone odnowienie; nie usuwa się świeżej sesji po odrzuceniu starego refresh tokena. Explicit KnownSessionRegressionTests odtwarza brak synchronizacji. |
+| MOB-20 | Kontrolowany adapter magazynu: brak części kluczy, błędna data ważności, wyjątek odczytu, zapisu i czyszczenia. Na urządzeniu sprawdź ponowny start po przerwanym logowaniu. | Brak nieobsłużonego wyjątku i mylącego zalogowania; bezpieczne ponowne logowanie. Aktualna atrapa in-memory nie sprawdza adaptera SecureStorage. |
+| MOB-21 | Faktycznie wykonaj gest MOB-04 na urządzeniu: nie zastępuj go wywołaniem command w teście Core. | Nowy GET i zatrzymany spinner. Znany konflikt bindingu IsRefreshing/IsBusy; jawny test regresyjny pokazuje przypadek IsBusy=true przed command. |
+| MOB-22 | Wczytana lista → offline/500/timeout/uszkodzony JSON → poprawne ponowienie → kilka kolejnych odświeżeń. | Poprzednie dane zachowane przy przejściowym błędzie, czytelny komunikat, IsBusy wyzerowane, brak duplikacji po sukcesie. 401/403 sprawdź osobno: inne reguły sesji i widoczności. |
+
+Deterministyczne przeploty testuj przez TaskCompletionSource, bez Sleep. Dla MOB-20 i pełnego A→B uzupełnienie adapterów/urządzenia pozostaje manualne; nie przedstawiaj ich jako wykonanych przez unit Core.
+Sposób uruchomienia znanych regresji: [05-pokrycie-i-regresje.md](05-pokrycie-i-regresje.md).

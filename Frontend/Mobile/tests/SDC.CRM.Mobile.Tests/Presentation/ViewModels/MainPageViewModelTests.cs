@@ -156,5 +156,40 @@ public sealed class MainPageViewModelTests
         await Assert.That(viewModel.Leads.Count).IsEqualTo(0);
         await _navigation.Received(1).GoToAsync("//login", Arg.Any<IDictionary<string, object>?>());
     }
+
+    [Test]
+    public async Task Refresh__When_device_goes_offline_after_loading__Should_keep_previous_leads_and_finish_loading()
+    {
+        GivenSignedInSalespersonOnline();
+        var vm = CreateViewModel();
+        await vm.AppearingCommand.ExecuteAsync(null);
+        _connectivity.IsConnected.Returns(false);
+
+        await vm.RefreshCommand.ExecuteAsync(null);
+
+        await Assert.That(vm.Leads.Count).IsEqualTo(1);
+        await Assert.That(vm.HasError).IsTrue();
+        await Assert.That(vm.IsBusy).IsFalse();
+        await _apiClient.Received(1).GetMyLeadsAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Refresh__When_failed_request_is_retried__Should_clear_error_and_replace_list_without_duplicates()
+    {
+        _connectivity.IsConnected.Returns(true);
+        _apiClient.GetMyLeadsAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<IReadOnlyList<LeadSummaryDto>>(new HttpRequestException("offline")));
+        var vm = CreateViewModel();
+        await vm.RefreshCommand.ExecuteAsync(null);
+        await Assert.That(vm.HasError).IsTrue();
+        _apiClient.GetMyLeadsAsync(Arg.Any<CancellationToken>()).Returns([Lead]);
+
+        await vm.RefreshCommand.ExecuteAsync(null);
+        await vm.RefreshCommand.ExecuteAsync(null);
+
+        await Assert.That(vm.HasError).IsFalse();
+        await Assert.That(vm.IsBusy).IsFalse();
+        await Assert.That(vm.Leads.Count).IsEqualTo(1);
+    }
 }
 

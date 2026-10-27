@@ -6,12 +6,16 @@ on:
   push:
     branches: [main]
     paths:
+      - 'doc/testy/**'
+      - 'SDC-CRM.slnx'
       - 'Backend/**'
       - 'global.json'
       - 'dotnet-tools.json'
       - '.github/workflows/backend.yml'
   pull_request:
     paths:
+      - 'doc/testy/**'
+      - 'SDC-CRM.slnx'
       - 'Backend/**'
       - 'global.json'
       - 'dotnet-tools.json'

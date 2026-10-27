@@ -6,11 +6,15 @@ on:
   push:
     branches: [main]
     paths:
+      - 'doc/testy/**'
+      - 'SDC-CRM.slnx'
       - 'Frontend/Mobile/**'
       - 'global.json'
       - '.github/workflows/mobile.yml'
   pull_request:
     paths:
+      - 'doc/testy/**'
+      - 'SDC-CRM.slnx'
       - 'Frontend/Mobile/**'
       - 'global.json'
       - '.github/workflows/mobile.yml'

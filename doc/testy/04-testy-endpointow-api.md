@@ -79,7 +79,7 @@ Zwraca leady, których właścicielem jest wywołujący, posortowane od najnowsz
 Klienci w SSO są publiczni (Authorization Code + PKCE), więc token uzyskuje się przez logowanie w przeglądarce.
 Najprościej przez aplikację web:
 
-1. Otwórz **okno incognito / InPrivate** (osobne dla każdego użytkownika) i zaloguj się na http://localhost:4200.
+1. Otwórz **oddzielny profil lub inną przeglądarkę** dla każdego użytkownika (okna incognito jednej przeglądarki współdzielą sesję) i zaloguj się na http://localhost:4200.
 2. Otwórz DevTools (`F12`) → Console i wykonaj:
 
    ```javascript
@@ -119,7 +119,7 @@ Działa w Windows PowerShell 5.1 i PowerShell 7.
 ./doc/testy/api/test-api.ps1
 
 # komplet scenariuszy
-./doc/testy/api/test-api.ps1 -SalespersonToken $handlowiec -OtherSalesToken $kierownik -BackofficeToken $backoffice
+./doc/testy/api/test-api.ps1 -SalespersonToken $handlowiec -OtherSalesToken $kierownik -BackofficeToken $backoffice -RequireAllTokens
 
 # inny adres API
 ./doc/testy/api/test-api.ps1 -BaseUrl http://localhost:5080
@@ -127,7 +127,7 @@ Działa w Windows PowerShell 5.1 i PowerShell 7.
 
 - Grupy bez podanego tokena są pomijane (`pominięto`).
 - Skrypt tworzy leady z prefiksem `[SMOKE]` i wypisuje ich identyfikatory (API nie ma usuwania leadów).
-- Kod wyjścia `1` oznacza co najmniej jeden niezgodny wynik.
+- Kod wyjścia: `0` — pełny smoke, `1` — błąd asercji/wykonania, `2` — wynik częściowy. `-RequireAllTokens` odrzuca brak tokenów przed wykonaniem żądań. Pełny smoke nie zastępuje testów ręcznych ani regresji znanych błędów.
 - Jeśli PowerShell blokuje skrypty: `powershell -ExecutionPolicy Bypass -File .\doc\testy\api\test-api.ps1 …`.
 
 ## Sposób 2 — klient HTTP w Riderze
@@ -151,7 +151,7 @@ Działa w Windows PowerShell 5.1 i PowerShell 7.
    Wyniki asercji są w oknie Services → HTTP Client → Tests.
 
 Kolejność ma znaczenie: API-13 i API-30 korzystają z identyfikatora zapisanego przez wcześniejsze żądania
-(`client.global.set("leadId", …)`).
+(`leadId`, `ownerAIds`, `ownerBIds`). Izolacja API-30/33 wymaga trzech rekordów A i dwóch B; uruchom cały plik od API-01, który zeruje stan. W osobnych profilach potwierdź różne `sub` przed zapisaniem tokenów.
 
 ## Sposób 3 — PowerShell ręcznie
 
@@ -216,7 +216,10 @@ Kolumna „Automat”: S — [api/test-api.ps1](api/test-api.ps1), H — [api/cr
 | API-19 | handlowiec | niepoprawny JSON | `400` | S, H |
 | API-20 | handlowiec | treść z `assignedSalespersonId` innej osoby | `201`, lead na liście **wywołującego** | S, H |
 | API-21 | handlowiec | `GET /api/leads/mine` z `X-Correlation-ID` | `200`, ten sam identyfikator; widoczny w Seq i Jaegerze | S |
-| API-30 | kierownik.sprzedazy | `GET /api/leads/mine` | `200`, brak leadów handlowca | S, H |
+| API-30 | kierownik.sprzedazy | `GET /api/leads/mine` | `200`, oba własne rekordy B i brak wszystkich A | S, H |
+| API-31 | kierownik.sprzedazy | utworzenie B1 | `201` z id | S, H |
+| API-32 | kierownik.sprzedazy | utworzenie B2 | `201` z id | S, H |
+| API-33 | handlowiec | ponowny `GET /api/leads/mine` | `200`, wszystkie własne A, brak B1/B2 | S, H |
 | API-40 | backoffice | `GET /api/leads/mine` | `403` | S, H |
 | API-41 | backoffice | `POST /api/leads` | `403`, nic nie zapisano | S, H |
 | API-50 | handlowiec | `contactPhone` dłuższy niż 50 znaków | oczekiwane biznesowo `400`; **prawdopodobnie obecnie `500`** (błąd bazy) — znana luka do zgłoszenia | R |
@@ -276,3 +279,25 @@ Scenariusze ręczne uzupełniają testy jednostkowe i integracyjne HTTP (TestSer
 dotnet test --solution Backend/SDC.CRM.Backend.slnf -c Release
 ```
 
+## Uzupełnienia integracyjne (API-53…API-60)
+
+| ID | Przypadek | Sprawdzenie |
+|---|---|---|
+| API-53 | Poprawnie zbudowany JWT z błędnym podpisem, issuer, audience, przyszłym nbf, exp daleko w przeszłości; brak roli i brak sub. | GET i POST: 401 dla nieważnego tokena, 403 dla braku roli, brak zapisu i korelacja. Zwykłe tekstowe API-03 nie wystarcza. JwtValidationTests używa prawdziwego handlera i lokalnego zaufanego klucza, bez zewnętrznego SSO. Brak sub to jawna znana regresja. Uwzględnij ClockSkew=30 s. |
+| API-54 | Świeża odizolowana baza → migracje dwukrotnie → zapis/odczyt → nowy DbContext; dodatkowo restart realnego API i ten sam GET. | Wszystkie pola, Email, UTC, null, sortowanie i własność zachowane. PostgresLeadRepositoryTests automatyzuje bazę/repozytorium; restart procesu i pełny HTTP są osobnym manualem. |
+| API-55 | N−1/N/N+1 każdego pola, także po trimowaniu; brak/null/typ inny niż string. | 201 dla poprawnych danych; 400 bez zapisu dla niepoprawnych. Limity: 200/200/320/50/100. N+1 to Explicit KnownValidationRegressionTests — obecnie aplikacja wymaga poprawy. |
+| API-56 | Przerwij połączenie z testową bazą przy GET/POST; osobno utrata odpowiedzi po skutecznym zapisie. | Brak fałszywego sukcesu klienta, korelacja i możliwość ponowienia; odnotuj realną liczbę zapisów. Idempotencja nie jest wdrożona — oczekiwanie dotyczące duplikatów wymaga decyzji. |
+| API-57 | OPTIONS z dozwolonego i obcego Origin, następnie browser fetch bez proxy z 400/401/403. | Allow-Origin tylko dla dozwolonego klienta; JS może odczytać X-Correlation-ID. Test CORS sprawdza preflight, a wymuszenie polityki przez przeglądarkę pozostaje manualne. |
+| API-58 | Około 20 użytkowników równocześnie, większa liczba leadów, wielokrotny odczyt i zapis. | Zapisz opóźnienia, błędy i zużycie zasobów, sprawdź izolację. Próg akceptacji czasu wymaga ustalenia; nie ma paginacji. Użyj wyłącznie testowej bazy. |
+| API-59 | POST bez tokena i jako obie role backoffice, następnie kontrola liczby rekordów. | 401/403, brak nowego rekordu. Macierz polityk jest także w LeadsEndpointsTests; rzeczywiste SQL/SSO sprawdź przy pełnym odbiorze. |
+| API-60 | Adresy jan@@firma.test, jan kowalski@firma.test i poprawne adresy graniczne. | Porównaj Web i API. Obecny VO ma lekką walidację; ustal wspólny kontrakt przed zamianą tych przykładów w blokujące asercje. |
+
+## Samotest narzędzia smoke
+
+Z katalogu głównego (Node z Frontend/Web/.nvmrc i PowerShell 7 w PATH):
+
+```powershell
+node doc/testy/api/tests/test-smoke-runner.mjs
+```
+
+Test uruchamia wyłącznie lokalny atrapowy serwer na losowym porcie. Sprawdza sukces pełnego smoke, wynik częściowy, brak wymaganych tokenów, powtórzony sub oraz odrzucenie pustej listy B, wycieku cudzych rekordów i uszkodzonych danych. Nie jest to test aplikacji CRM, JWT ani SSO. Kody 0/1/2 są testowane jako kontrakt skryptu.
